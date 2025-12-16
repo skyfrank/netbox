@@ -1,0 +1,117 @@
+{% load form_helpers %}
+{% load i18n %}
+
+<button type="button" class="btn btn-outline-secondary ms-1" data-bs-toggle="modal" data-bs-target="#custom-name-creation-modal" title="{% trans "Open name creation modal" %}">
+  <i class="mdi mdi-pencil"></i>
+</button>
+
+<div class="modal fade" id="custom-name-creation-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          {% trans "Name Creation Modal" %}
+        </h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        {% render_field form.nb_site %}
+        {% render_field form.nb_location %}
+        {% render_field form.nb_system %}
+        {% render_field form.nb_subsystem %}
+        {% render_field form.nb_component %}
+
+        {% render_field form.nb_name %}
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+        <button type="button" class="btn btn-primary" id="name-builder-apply" disabled>{% trans "Apply name" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const siteSelect = document.getElementById('{{ form.nb_site.id_for_label }}');
+    const locationSelect = document.getElementById('{{ form.nb_location.id_for_label }}');
+    const systemSelect = document.getElementById('{{ form.nb_system.id_for_label }}');
+    const subsystemSelect = document.getElementById('{{ form.nb_subsystem.id_for_label }}');
+    const componentSelect = document.getElementById('{{ form.nb_component.id_for_label }}');
+    const nameInput = document.getElementById('{{ form.nb_name.id_for_label }}');
+    const applyButton = document.getElementById('name-builder-apply');
+    const targetField = document.getElementById('{{ target_field.id_for_label }}');
+    const modal = document.getElementById('custom-name-creation-modal');
+
+    function updateName() {
+        const currentParts = nameInput.value.includes('-') ? nameInput.value.split('-') : ['','','','','',nameInput.value];
+        
+        const siteName = siteSelect.tomselect.options[siteSelect.tomselect.getValue()]?.display ?? currentParts[0];
+        const locationName = locationSelect.tomselect.options[locationSelect.tomselect.getValue()]?.display ?? currentParts[1];
+        const systemName = systemSelect.tomselect.options[systemSelect.tomselect.getValue()]?.display ?? currentParts[2];
+        const subsystemName = subsystemSelect.tomselect.options[subsystemSelect.tomselect.getValue()]?.display ?? currentParts[3];
+        const componentName = componentSelect.tomselect.options[componentSelect.tomselect.getValue()]?.display ?? currentParts[4];
+
+        const rest = currentParts.length > 5 ? currentParts.slice(5).join('-') : '';
+        nameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${rest}`;
+
+        updateAllSelects(true);
+    }
+
+    function updateAllSelects(clear=false) {
+        applyButton.disabled = !nameInput.value.split('-')[5];
+        updateSelect(siteSelect.tomselect, 0, clear);
+        updateSelect(locationSelect.tomselect, 1, clear);
+        updateSelect(systemSelect.tomselect, 2, clear);
+        updateSelect(subsystemSelect.tomselect, 3, clear);
+        updateSelect(componentSelect.tomselect, 4, clear);
+    }
+
+    function updateSelect(tomselect, part, clear=false) {
+        const name = nameInput.value.split('-')[part];
+        if (!name || !tomselect) 
+        {
+            if (clear) tomselect.clear();
+            applyButton.disabled = true;
+            return;
+        }
+
+        const option = Object.values(tomselect.options).find((o) => o.display === name);
+        if (!option) {
+            if (clear) tomselect.clear();
+            applyButton.disabled = true;
+            return;
+        }
+
+        if (tomselect.getValue() != option.id) {
+            tomselect.setValue(option.id);
+        }
+    }
+
+    siteSelect.addEventListener('change', updateName);
+    siteSelect.tomselect.on('load', () => updateSelect(siteSelect.tomselect, 0));
+    locationSelect.addEventListener('change', updateName);
+    locationSelect.tomselect.on('load', () => updateSelect(locationSelect.tomselect, 1));
+    systemSelect.addEventListener('change', updateName);
+    systemSelect.tomselect.on('load', () => updateSelect(systemSelect.tomselect, 2));
+    subsystemSelect.addEventListener('change', updateName);
+    subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect.tomselect, 3));
+    componentSelect.addEventListener('change', updateName);
+    componentSelect.tomselect.on('load', () => updateSelect(componentSelect.tomselect, 4));
+    nameInput.addEventListener('input', updateAllSelects);
+    
+    updateAllSelects();
+
+    siteSelect.tomselect.refreshOptions();
+    systemSelect.tomselect.refreshOptions();
+
+    applyButton.addEventListener('click', function() {
+        if (targetField && nameInput.value) {
+            targetField.value = nameInput.value;
+        }
+        Modal.getInstance(modal).hide();
+    });
+});
+</script>
