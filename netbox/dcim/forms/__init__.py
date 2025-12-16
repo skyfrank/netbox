@@ -7,3 +7,4 @@ from .formsets import *
 from .model_forms import *
 from .object_create import *
 from .object_import import *
+from .name_builder import *
