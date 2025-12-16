@@ -11,7 +11,28 @@
       <div class="row">
         <h2 class="col-9 offset-3">{% trans "Device" %}</h2>
       </div>
-      {% render_field form.name %}
+
+      <div class="row mb-3{% if form.name.errors %} has-errors{% endif %}">
+        <div class="col-sm-3 text-lg-end">
+          <label for="{{ form.name.id_for_label }}" class="col-form-label d-inline-block{% if form.name.field.required %} required{% endif %}">
+            {{ form.name.label }}
+          </label>
+        </div>
+
+        <div class="col">
+          <div class="d-flex">
+            {{ form.name }}
+            {% include 'inc/name_builder_modal.html' with form=name_builder_form target_field=form.name %}
+          </div>
+
+          {% if form.name.errors %}
+            <div class="form-text text-danger">
+              {% for error in form.name.errors %}{{ error }}{% if not forloop.last %}<br />{% endif %}{% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
       {% render_field form.role %}
       {% render_field form.description %}
       {% render_field form.tags %}
