@@ -5,5 +5,6 @@ from .connections import *
 from .filtersets import *
 from .formsets import *
 from .model_forms import *
+from .name_builder import *
 from .object_create import *
 from .object_import import *
