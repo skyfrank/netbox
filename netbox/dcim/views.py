@@ -2570,6 +2570,11 @@ class DeviceEditView(generic.ObjectEditView):
     form = forms.DeviceForm
     template_name = 'dcim/device_edit.html'
 
+    def get_extra_context(self, request, instance):
+        return {
+            'name_builder_form': forms.NameBuilderForm(),
+        }
+
 
 @register_model_view(Device, 'delete')
 class DeviceDeleteView(generic.ObjectDeleteView):
