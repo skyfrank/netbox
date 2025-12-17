@@ -1110,6 +1110,12 @@ class RackNonRackedView(generic.ObjectChildrenView):
 class RackEditView(generic.ObjectEditView):
     queryset = Rack.objects.all()
     form = forms.RackForm
+    template_name = 'dcim/rack_edit.html'
+
+    def get_extra_context(self, request, instance):
+        return {
+            'name_builder_form': forms.NameBuilderForm(),
+        }
 
 
 @register_model_view(Rack, 'delete')
