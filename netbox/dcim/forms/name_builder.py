@@ -37,15 +37,18 @@ class NameBuilderForm(forms.Form):
     nb_system = DynamicModelChoiceField(
         queryset=System.objects.all(),
         label=_("System"),
+        help_text=_("System"),
     )
     nb_subsystem = DynamicModelChoiceField(
         queryset=SubSystem.objects.all(),
         label=_("Subsystem"),
+        help_text=_("Subystem"),
         query_params={"system": "$nb_system"},
     )
     nb_component = DynamicModelChoiceField(
         queryset=Component.objects.all(),
         label=_("Component"),
+        help_text=_("Component"),
         query_params={"system": "$nb_system", "subsystem": "$nb_subsystem"},
     )
     nb_name = forms.CharField(
