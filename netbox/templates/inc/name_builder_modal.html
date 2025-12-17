@@ -62,14 +62,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateAllSelects(clear=false) {
         applyButton.disabled = !nameInput.value.split('-')[5];
-        updateSelect(siteSelect.tomselect, 0, clear);
-        updateSelect(locationSelect.tomselect, 1, clear);
-        updateSelect(systemSelect.tomselect, 2, clear);
-        updateSelect(subsystemSelect.tomselect, 3, clear);
-        updateSelect(componentSelect.tomselect, 4, clear);
+        updateSelect(siteSelect, 0, clear);
+        updateSelect(locationSelect, 1, clear);
+        updateSelect(systemSelect, 2, clear);
+        updateSelect(subsystemSelect, 3, clear);
+        updateSelect(componentSelect, 4, clear);
     }
 
-    function updateSelect(tomselect, part, clear=false) {
+    function updateSelect(elem, part, clear=false) {
+        const tomselect = elem.tomselect;
+        const descriptionSpan = elem.parentElement.parentElement.getElementsByClassName("form-text")[0];
         const name = nameInput.value.split('-')[part];
         if (!name) {
             if (part === 1 && siteSelect.tomselect.getValue() && document.activeElement !== nameInput && !!"{{ prefer_location }}") {
@@ -83,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (clear) tomselect.clear();
             applyButton.disabled = true;
+            if (descriptionSpan) descriptionSpan.textContent = '';
             return;
         }
 
@@ -90,24 +93,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!option) {
             if (clear) tomselect.clear();
             applyButton.disabled = true;
+            if (descriptionSpan) descriptionSpan.textContent = '';
             return;
         }
 
+        if (descriptionSpan) descriptionSpan.textContent = option.description;
         if (tomselect.getValue() != option.id) {
             tomselect.setValue(option.id);
         }
     }
 
     siteSelect.addEventListener('change', updateName);
-    siteSelect.tomselect.on('load', () => updateSelect(siteSelect.tomselect, 0));
+    siteSelect.tomselect.on('load', () => updateSelect(siteSelect, 0));
     locationSelect.addEventListener('change', updateName);
-    locationSelect.tomselect.on('load', () => updateSelect(locationSelect.tomselect, 1));
+    locationSelect.tomselect.on('load', () => updateSelect(locationSelect, 1));
     systemSelect.addEventListener('change', updateName);
-    systemSelect.tomselect.on('load', () => updateSelect(systemSelect.tomselect, 2));
+    systemSelect.tomselect.on('load', () => updateSelect(systemSelect, 2));
     subsystemSelect.addEventListener('change', updateName);
-    subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect.tomselect, 3));
+    subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect, 3));
     componentSelect.addEventListener('change', updateName);
-    componentSelect.tomselect.on('load', () => updateSelect(componentSelect.tomselect, 4));
+    componentSelect.tomselect.on('load', () => updateSelect(componentSelect, 4));
     nameInput.addEventListener('input', updateAllSelects);
     
     updateAllSelects();
