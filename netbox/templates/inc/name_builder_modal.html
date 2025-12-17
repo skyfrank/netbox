@@ -71,8 +71,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateSelect(tomselect, part, clear=false) {
         const name = nameInput.value.split('-')[part];
-        if (!name || !tomselect) 
-        {
+        if (!name) {
+            if (part === 1 && siteSelect.tomselect.getValue() && document.activeElement !== nameInput && !!"{{ prefer_location }}") {
+                const option = Object.values(tomselect.options).find((o) => o.display === "{{ prefer_location }}");
+                if (option) {
+                    if (tomselect.getValue() != option.id) {
+                        tomselect.setValue(option.id);
+                    }
+                    return;
+                }
+            }
             if (clear) tomselect.clear();
             applyButton.disabled = true;
             return;
