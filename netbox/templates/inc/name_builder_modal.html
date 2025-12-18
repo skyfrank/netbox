@@ -117,14 +117,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const descriptionSpan = elem.parentElement.parentElement.getElementsByClassName("form-text")[0];
         const name = nameInput.value.split('-')[part];
         if (!name) {
-            if (part === 1 && siteSelect.tomselect.getValue() && document.activeElement !== nameInput && !!"{{ prefer_location }}") {
-                const option = Object.values(tomselect.options).find((o) => o.display === "{{ prefer_location }}");
-                if (option) {
-                    if (tomselect.getValue() != option.id) {
-                        tomselect.setValue(option.id);
-                    }
-                    return;
-                }
+            if (part === 1 && siteSelect.tomselect.getValue() && autoSelectPreferredValue(tomselect, "{{ prefer_location }}")) {
+                return;
+            } else if (part === 2 && autoSelectPreferredValue(tomselect, "{{ prefer_system }}")) {
+                return;
+            } else if (part === 3 && systemSelect.tomselect.getValue() && autoSelectPreferredValue(tomselect, "{{ prefer_subsystem }}")) {
+                return;
             }
             tomselect.clear();
             applyButton.disabled = true;
@@ -144,6 +142,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tomselect.getValue() != option.id) {
             tomselect.setValue(option.id);
         }
+    }
+
+    function autoSelectPreferredValue(tomselect, preferredName) {
+        if (!preferredName || document.activeElement === nameInput) return false;
+        const option = Object.values(tomselect.options).find((o) => o.display === preferredName);
+        if (option) {
+            if (tomselect.getValue() != option.id) {
+                tomselect.setValue(option.id);
+            }
+            return true;
+        }
+        return false;
     }
 
     applyButton.addEventListener('click', function() {
