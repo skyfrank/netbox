@@ -22,7 +22,7 @@
         <div class="col">
           <div class="d-flex">
             {{ form.name }}
-            {% include 'inc/name_builder_modal.html' with form=name_builder_form target_field=form.name prefer_location='LT9999' %}
+            {% include 'inc/name_builder_modal.html' with form=name_builder_form target_field=form.name target_site=form.site target_location=form.location prefer_location='LT9999' %}
           </div>
 
           {% if form.name.errors %}
