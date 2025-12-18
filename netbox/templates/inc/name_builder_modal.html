@@ -42,22 +42,65 @@ document.addEventListener('DOMContentLoaded', function() {
     const componentSelect = document.getElementById('{{ form.nb_component.id_for_label }}');
     const nameInput = document.getElementById('{{ form.nb_name.id_for_label }}');
     const applyButton = document.getElementById('name-builder-apply');
-    const targetField = document.getElementById('{{ target_field.id_for_label }}');
+    const targetNameInput = document.getElementById('{{ target_field.id_for_label }}');
+    const targetSiteSelect = document.getElementById('{{ target_site.id_for_label }}');
+    const targetLocationSelect = document.getElementById('{{ target_location.id_for_label }}');
     const modal = document.getElementById('custom-name-creation-modal');
 
+    siteSelect.addEventListener('change', updateName);
+    siteSelect.tomselect.on('load', () => updateSelect(siteSelect, 0));
+    locationSelect.addEventListener('change', updateName);
+    locationSelect.tomselect.on('load', () => updateSelect(locationSelect, 1));
+    systemSelect.addEventListener('change', updateName);
+    systemSelect.tomselect.on('load', () => updateSelect(systemSelect, 2));
+    subsystemSelect.addEventListener('change', updateName);
+    subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect, 3));
+    componentSelect.addEventListener('change', updateName);
+    componentSelect.tomselect.on('load', () => updateSelect(componentSelect, 4));
+    nameInput.addEventListener('input', updateAllSelects);
+    targetNameInput.addEventListener('input', () => {
+        nameInput.value = targetNameInput.value;
+        updateAllSelects();
+    });
+    targetSiteSelect.addEventListener('change', () => {
+        if (siteSelect.tomselect.getValue() !== targetSiteSelect.tomselect.getValue()) {
+            const option = targetSiteSelect.tomselect.options[targetSiteSelect.tomselect.getValue()];
+            siteSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            siteSelect.tomselect.setValue(targetSiteSelect.tomselect.getValue());
+        }
+    });
+    targetLocationSelect.addEventListener('change', () => {
+        if (locationSelect.tomselect.getValue() !== targetLocationSelect.tomselect.getValue()) {
+            const option = targetLocationSelect.tomselect.options[targetLocationSelect.tomselect.getValue()];
+            locationSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            locationSelect.tomselect.setValue(targetLocationSelect.tomselect.getValue());
+        }
+    });
+
+    siteSelect.tomselect.refreshOptions();
+    systemSelect.tomselect.refreshOptions();
+    nameInput.value = targetNameInput.value;
+
+    let shouldUpdateName = true;
     function updateName() {
-        const currentParts = nameInput.value.includes('-') ? nameInput.value.split('-') : ['','','','','',nameInput.value];
-        
-        const siteName = siteSelect.tomselect.options[siteSelect.tomselect.getValue()]?.display ?? currentParts[0];
-        const locationName = locationSelect.tomselect.options[locationSelect.tomselect.getValue()]?.display ?? currentParts[1];
-        const systemName = systemSelect.tomselect.options[systemSelect.tomselect.getValue()]?.display ?? currentParts[2];
-        const subsystemName = subsystemSelect.tomselect.options[subsystemSelect.tomselect.getValue()]?.display ?? currentParts[3];
-        const componentName = componentSelect.tomselect.options[componentSelect.tomselect.getValue()]?.display ?? currentParts[4];
+        if (!shouldUpdateName) return;
 
-        const rest = currentParts.length > 5 ? currentParts.slice(5).join('-') : '';
-        nameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${rest}`;
+        shouldUpdateName = false;
+        queueMicrotask(() => {
+            const currentParts = nameInput.value.includes('-') ? nameInput.value.split('-') : ['','','','','',nameInput.value];
 
-        updateAllSelects(true);
+            const siteName = siteSelect.tomselect.options[siteSelect.tomselect.getValue()]?.display ?? currentParts[0];
+            const locationName = locationSelect.tomselect.options[locationSelect.tomselect.getValue()]?.display ?? currentParts[1];
+            const systemName = systemSelect.tomselect.options[systemSelect.tomselect.getValue()]?.display ?? currentParts[2];
+            const subsystemName = subsystemSelect.tomselect.options[subsystemSelect.tomselect.getValue()]?.display ?? currentParts[3];
+            const componentName = componentSelect.tomselect.options[componentSelect.tomselect.getValue()]?.display ?? currentParts[4];
+
+            const rest = currentParts.length > 5 ? currentParts.slice(5).join('-') : '';
+            nameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${rest}`;
+
+            updateAllSelects();
+            shouldUpdateName = true;
+        });
     }
 
     function updateAllSelects(clear=false) {
@@ -69,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSelect(componentSelect, 4, clear);
     }
 
-    function updateSelect(elem, part, clear=false) {
+    function updateSelect(elem, part) {
         const tomselect = elem.tomselect;
         const descriptionSpan = elem.parentElement.parentElement.getElementsByClassName("form-text")[0];
         const name = nameInput.value.split('-')[part];
@@ -83,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
             }
-            if (clear) tomselect.clear();
+            tomselect.clear();
             applyButton.disabled = true;
             if (descriptionSpan) descriptionSpan.textContent = '';
             return;
@@ -91,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const option = Object.values(tomselect.options).find((o) => o.display === name);
         if (!option) {
-            if (clear) tomselect.clear();
+            tomselect.clear();
             applyButton.disabled = true;
             if (descriptionSpan) descriptionSpan.textContent = '';
             return;
@@ -103,27 +146,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    siteSelect.addEventListener('change', updateName);
-    siteSelect.tomselect.on('load', () => updateSelect(siteSelect, 0));
-    locationSelect.addEventListener('change', updateName);
-    locationSelect.tomselect.on('load', () => updateSelect(locationSelect, 1));
-    systemSelect.addEventListener('change', updateName);
-    systemSelect.tomselect.on('load', () => updateSelect(systemSelect, 2));
-    subsystemSelect.addEventListener('change', updateName);
-    subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect, 3));
-    componentSelect.addEventListener('change', updateName);
-    componentSelect.tomselect.on('load', () => updateSelect(componentSelect, 4));
-    nameInput.addEventListener('input', updateAllSelects);
-    
-    updateAllSelects();
-
-    siteSelect.tomselect.refreshOptions();
-    systemSelect.tomselect.refreshOptions();
-
     applyButton.addEventListener('click', function() {
-        if (targetField && nameInput.value) {
-            targetField.value = nameInput.value;
+        if (siteSelect.tomselect.getValue() !== targetSiteSelect.tomselect.getValue()) {
+            const option = siteSelect.tomselect.options[siteSelect.tomselect.getValue()];
+            targetSiteSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            targetSiteSelect.tomselect.setValue(siteSelect.tomselect.getValue());
         }
+        if (locationSelect.tomselect.getValue() !== targetLocationSelect.tomselect.getValue()) {
+            const option = locationSelect.tomselect.options[locationSelect.tomselect.getValue()];
+            targetLocationSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            targetLocationSelect.tomselect.setValue(locationSelect.tomselect.getValue());
+        }
+        targetNameInput.value = nameInput.value;
         Modal.getInstance(modal).hide();
     });
 });
