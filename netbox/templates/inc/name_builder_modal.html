@@ -23,6 +23,56 @@
         {% render_field form.nb_component %}
 
         {% render_field form.nb_name %}
+
+        <div class="row">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 102" width="512" height="102" style="color-scheme: light dark;">
+              <style>
+                text { font-family: Helvetica, Arial, sans-serif; font-size: 12px; text-anchor: middle; dominant-baseline: central; fill: light-dark(#000, #fff); }
+                .green { fill: #d5e8d4; stroke: #82b366; }
+                .blue { fill: #dae8fc; stroke: #6c8ebf; }
+                .gray { fill: #f5f5f5; stroke: #666; }
+                .gray-text { fill: #333; }
+              </style>
+              <!-- Example name (top row) -->
+              <rect class="green" x="100" y="0" width="46" height="30"/>
+              <text x="123" y="15">CA01</text>
+              <text x="156" y="15">-</text>
+              <rect class="green" x="166" y="0" width="50" height="30"/>
+              <text x="191" y="15">LT0116</text>
+              <text x="226" y="15">-</text>
+              <rect class="blue" x="236" y="0" width="30" height="30"/>
+              <text x="251" y="15">PB</text>
+              <text x="276" y="15">-</text>
+              <rect class="blue" x="283" y="0" width="43" height="30"/>
+              <text x="305" y="15">VDO</text>
+              <text x="336" y="15">-</text>
+              <rect class="blue" x="346" y="0" width="30" height="30"/>
+              <text x="361" y="15">PCL</text>
+              <text x="386" y="15">-</text>
+              <rect class="gray" x="389" y="0" width="50" height="30"/>
+              <text class="gray-text" x="414" y="15">C001</text>
+              <!-- Connecting lines -->
+              <line class="green" x1="30" y1="70" x2="123" y2="30"/>
+              <line class="green" x1="115" y1="70" x2="188" y2="31"/>
+              <line class="blue" x1="196" y1="70" x2="251" y2="30"/>
+              <line class="blue" x1="275" y1="70" x2="305" y2="30"/>
+              <line class="blue" x1="360" y1="70" x2="361" y2="30"/>
+              <line class="gray" x1="460" y1="70" x2="410" y2="30"/>
+              <!-- Labels (bottom row) -->
+              <rect class="green" x="0" y="70" width="60" height="30"/>
+              <text x="30" y="85">{% trans "Site" %}</text>
+              <rect class="green" x="70" y="70" width="90" height="30"/>
+              <text x="115" y="85">{% trans "Location" %}</text>
+              <rect class="blue" x="166" y="70" width="60" height="30"/>
+              <text x="196" y="85">{% trans "System" %}</text>
+              <rect class="blue" x="240" y="70" width="70" height="30"/>
+              <text x="275" y="85">{% trans "Subsystem" %}</text>
+              <rect class="blue" x="320" y="70" width="80" height="30"/>
+              <text x="360" y="85">{% trans "Component" %}</text>
+              <rect class="gray" x="410" y="70" width="100" height="30"/>
+              <text class="gray-text" x="460" y="85">{% trans "Instance" %}</text>
+            </svg>
+        </div>
       </div>
 
       <div class="modal-footer">
