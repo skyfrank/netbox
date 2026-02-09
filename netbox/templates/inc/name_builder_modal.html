@@ -21,6 +21,7 @@
         {% render_field form.nb_system %}
         {% render_field form.nb_subsystem %}
         {% render_field form.nb_component %}
+        {% render_field form.nb_instance %}
 
         {% render_field form.nb_name %}
 
@@ -90,7 +91,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const systemSelect = document.getElementById('{{ form.nb_system.id_for_label }}');
     const subsystemSelect = document.getElementById('{{ form.nb_subsystem.id_for_label }}');
     const componentSelect = document.getElementById('{{ form.nb_component.id_for_label }}');
-    const nameInput = document.getElementById('{{ form.nb_name.id_for_label }}');
+    const instanceNameInput = document.getElementById('{{ form.nb_instance.id_for_label }}');
+    const fullNameInput = document.getElementById('{{ form.nb_name.id_for_label }}');
     const applyButton = document.getElementById('name-builder-apply');
     const targetNameInput = document.getElementById('{{ target_field.id_for_label }}');
     const targetSiteSelect = document.getElementById('{{ target_site.id_for_label }}');
@@ -107,19 +109,20 @@ document.addEventListener('DOMContentLoaded', function() {
     subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect, 3));
     componentSelect.addEventListener('change', updateName);
     componentSelect.tomselect.on('load', () => updateSelect(componentSelect, 4));
-    nameInput.addEventListener('input', updateAllSelects);
+    instanceNameInput.addEventListener('input', updateName);
+    fullNameInput.addEventListener('input', updateAllSelects);
     targetNameInput.addEventListener('input', () => {
-        nameInput.value = targetNameInput.value;
+        fullNameInput.value = targetNameInput.value;
         updateAllSelects();
     });
-    targetSiteSelect.addEventListener('change', () => {
+    targetSiteSelect?.addEventListener('change', () => {
         if (siteSelect.tomselect.getValue() !== targetSiteSelect.tomselect.getValue()) {
             const option = targetSiteSelect.tomselect.options[targetSiteSelect.tomselect.getValue()];
             siteSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
             siteSelect.tomselect.setValue(targetSiteSelect.tomselect.getValue());
         }
     });
-    targetLocationSelect.addEventListener('change', () => {
+    targetLocationSelect?.addEventListener('change', () => {
         if (locationSelect.tomselect.getValue() !== targetLocationSelect.tomselect.getValue()) {
             const option = targetLocationSelect.tomselect.options[targetLocationSelect.tomselect.getValue()];
             locationSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
@@ -129,32 +132,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     siteSelect.tomselect.refreshOptions();
     systemSelect.tomselect.refreshOptions();
-    nameInput.value = targetNameInput.value;
+    fullNameInput.value = targetNameInput.value;
+    instanceNameInput.value = fullNameInput.value.split('-').length > 5 ? fullNameInput.value.split('-').slice(5).join('-') : '';
 
     let shouldUpdateName = true;
     function updateName() {
-        if (!shouldUpdateName) return;
+        if (!shouldUpdateName || document.activeElement === fullNameInput) return;
 
         shouldUpdateName = false;
-        queueMicrotask(() => {
-            const currentParts = nameInput.value.includes('-') ? nameInput.value.split('-') : ['','','','','',nameInput.value];
+        const currentParts = fullNameInput.value.split('-') ?? [];
 
-            const siteName = siteSelect.tomselect.options[siteSelect.tomselect.getValue()]?.display ?? currentParts[0];
-            const locationName = locationSelect.tomselect.options[locationSelect.tomselect.getValue()]?.display ?? currentParts[1];
-            const systemName = systemSelect.tomselect.options[systemSelect.tomselect.getValue()]?.display ?? currentParts[2];
-            const subsystemName = subsystemSelect.tomselect.options[subsystemSelect.tomselect.getValue()]?.display ?? currentParts[3];
-            const componentName = componentSelect.tomselect.options[componentSelect.tomselect.getValue()]?.display ?? currentParts[4];
+        const siteName = siteSelect.tomselect.options[siteSelect.tomselect.getValue()]?.display ?? currentParts[0] ?? '';
+        const locationName = locationSelect.tomselect.options[locationSelect.tomselect.getValue()]?.display ?? currentParts[1] ?? '';
+        const systemName = systemSelect.tomselect.options[systemSelect.tomselect.getValue()]?.display ?? currentParts[2] ?? '';
+        const subsystemName = subsystemSelect.tomselect.options[subsystemSelect.tomselect.getValue()]?.display ?? currentParts[3] ?? '';
+        const componentName = componentSelect.tomselect.options[componentSelect.tomselect.getValue()]?.display ?? currentParts[4] ?? '';
+        const instanceName = instanceNameInput.value ?? currentParts.slice(5).join('-') ?? '';
 
-            const rest = currentParts.length > 5 ? currentParts.slice(5).join('-') : '';
-            nameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${rest}`;
+        fullNameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${instanceName}`;
 
-            updateAllSelects();
-            shouldUpdateName = true;
-        });
+        updateAllSelects();
+        shouldUpdateName = true;
     }
 
     function updateAllSelects(clear=false) {
-        applyButton.disabled = !nameInput.value.split('-')[5];
+        const parts = fullNameInput.value.split('-');
+        instanceNameInput.value = parts.length > 5 ? parts.slice(5).join('-') : '';
+        applyButton.disabled = !instanceNameInput.value;
         updateSelect(siteSelect, 0, clear);
         updateSelect(locationSelect, 1, clear);
         updateSelect(systemSelect, 2, clear);
@@ -165,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateSelect(elem, part) {
         const tomselect = elem.tomselect;
         const descriptionSpan = elem.parentElement.parentElement.getElementsByClassName("form-text")[0];
-        const name = nameInput.value.split('-')[part];
+        const name = fullNameInput.value.split('-')[part];
         if (!name) {
             if (part === 1 && siteSelect.tomselect.getValue() && autoSelectPreferredValue(tomselect, "{{ prefer_location }}")) {
                 return;
@@ -195,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function autoSelectPreferredValue(tomselect, preferredName) {
-        if (!preferredName || document.activeElement === nameInput) return false;
+        if (!preferredName || document.activeElement === fullNameInput) return false;
         const option = Object.values(tomselect.options).find((o) => o.display === preferredName);
         if (option) {
             if (tomselect.getValue() != option.id) {
@@ -207,17 +211,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     applyButton.addEventListener('click', function() {
-        if (siteSelect.tomselect.getValue() !== targetSiteSelect.tomselect.getValue()) {
+        if (siteSelect.tomselect.getValue() !== targetSiteSelect?.tomselect.getValue()) {
             const option = siteSelect.tomselect.options[siteSelect.tomselect.getValue()];
-            targetSiteSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
-            targetSiteSelect.tomselect.setValue(siteSelect.tomselect.getValue());
+            targetSiteSelect?.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            targetSiteSelect?.tomselect.setValue(siteSelect.tomselect.getValue());
         }
-        if (locationSelect.tomselect.getValue() !== targetLocationSelect.tomselect.getValue()) {
+        if (locationSelect.tomselect.getValue() !== targetLocationSelect?.tomselect.getValue()) {
             const option = locationSelect.tomselect.options[locationSelect.tomselect.getValue()];
-            targetLocationSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
-            targetLocationSelect.tomselect.setValue(locationSelect.tomselect.getValue());
+            targetLocationSelect?.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            targetLocationSelect?.tomselect.setValue(locationSelect.tomselect.getValue());
         }
-        targetNameInput.value = nameInput.value;
+        targetNameInput.value = fullNameInput.value;
         Modal.getInstance(modal).hide();
     });
 });
