@@ -51,6 +51,9 @@ class NameBuilderForm(forms.Form):
         help_text=_("Component"),
         query_params={"system": "$nb_system", "subsystem": "$nb_subsystem"},
     )
-    nb_name = forms.CharField(
+    nb_instance = forms.CharField(
         label=_("Name"),
+    )
+    nb_name = forms.CharField(
+        label=_("Full Name"),
     )
