@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from dcim.filtersets import DeviceFilterSet
-from dcim.forms import DeviceFilterForm
+from dcim.forms import DeviceFilterForm, NameBuilderForm
 from dcim.models import Device
 from dcim.tables import DeviceTable
 from extras.ui.panels import CustomFieldsPanel, ImageAttachmentsPanel, TagsPanel
@@ -461,6 +461,12 @@ class VirtualMachineRenderConfigView(ObjectRenderConfigView):
 class VirtualMachineEditView(generic.ObjectEditView):
     queryset = VirtualMachine.objects.all()
     form = forms.VirtualMachineForm
+    template_name = 'virtualization/virtualmachine_edit.html'
+
+    def get_extra_context(self, request, instance):
+        return {
+            'name_builder_form': NameBuilderForm(),
+        }
 
 
 @register_model_view(VirtualMachine, 'delete')

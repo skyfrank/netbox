@@ -1,0 +1,228 @@
+{% load form_helpers %}
+{% load i18n %}
+
+<button type="button" class="btn btn-outline-secondary ms-1" data-bs-toggle="modal" data-bs-target="#custom-name-creation-modal" title="{% trans "Open name creation modal" %}">
+  <i class="mdi mdi-pencil"></i>
+</button>
+
+<div class="modal fade" id="custom-name-creation-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          {% trans "Name Creation Modal" %}
+        </h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        {% render_field form.nb_site %}
+        {% render_field form.nb_location %}
+        {% render_field form.nb_system %}
+        {% render_field form.nb_subsystem %}
+        {% render_field form.nb_component %}
+        {% render_field form.nb_instance %}
+
+        {% render_field form.nb_name %}
+
+        <div class="row">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 102" width="512" height="102" style="color-scheme: light dark;">
+              <style>
+                text { font-family: Helvetica, Arial, sans-serif; font-size: 12px; text-anchor: middle; dominant-baseline: central; fill: light-dark(#000, #fff); }
+                .green { fill: #d5e8d4; stroke: #82b366; }
+                .blue { fill: #dae8fc; stroke: #6c8ebf; }
+                .gray { fill: #f5f5f5; stroke: #666; }
+                .gray-text { fill: #333; }
+              </style>
+              <!-- Example name (top row) -->
+              <rect class="green" x="100" y="0" width="46" height="30"/>
+              <text x="123" y="15">CA01</text>
+              <text x="156" y="15">-</text>
+              <rect class="green" x="166" y="0" width="50" height="30"/>
+              <text x="191" y="15">LT0116</text>
+              <text x="226" y="15">-</text>
+              <rect class="blue" x="236" y="0" width="30" height="30"/>
+              <text x="251" y="15">PB</text>
+              <text x="276" y="15">-</text>
+              <rect class="blue" x="283" y="0" width="43" height="30"/>
+              <text x="305" y="15">VDO</text>
+              <text x="336" y="15">-</text>
+              <rect class="blue" x="346" y="0" width="30" height="30"/>
+              <text x="361" y="15">PCL</text>
+              <text x="386" y="15">-</text>
+              <rect class="gray" x="389" y="0" width="50" height="30"/>
+              <text class="gray-text" x="414" y="15">C001</text>
+              <!-- Connecting lines -->
+              <line class="green" x1="30" y1="70" x2="123" y2="30"/>
+              <line class="green" x1="115" y1="70" x2="188" y2="31"/>
+              <line class="blue" x1="196" y1="70" x2="251" y2="30"/>
+              <line class="blue" x1="275" y1="70" x2="305" y2="30"/>
+              <line class="blue" x1="360" y1="70" x2="361" y2="30"/>
+              <line class="gray" x1="460" y1="70" x2="410" y2="30"/>
+              <!-- Labels (bottom row) -->
+              <rect class="green" x="0" y="70" width="60" height="30"/>
+              <text x="30" y="85">{% trans "Site" %}</text>
+              <rect class="green" x="70" y="70" width="90" height="30"/>
+              <text x="115" y="85">{% trans "Location" %}</text>
+              <rect class="blue" x="166" y="70" width="60" height="30"/>
+              <text x="196" y="85">{% trans "System" %}</text>
+              <rect class="blue" x="240" y="70" width="70" height="30"/>
+              <text x="275" y="85">{% trans "Subsystem" %}</text>
+              <rect class="blue" x="320" y="70" width="80" height="30"/>
+              <text x="360" y="85">{% trans "Component" %}</text>
+              <rect class="gray" x="410" y="70" width="100" height="30"/>
+              <text class="gray-text" x="460" y="85">{% trans "Instance" %}</text>
+            </svg>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+        <button type="button" class="btn btn-primary" id="name-builder-apply" disabled>{% trans "Apply name" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const siteSelect = document.getElementById('{{ form.nb_site.id_for_label }}');
+    const locationSelect = document.getElementById('{{ form.nb_location.id_for_label }}');
+    const systemSelect = document.getElementById('{{ form.nb_system.id_for_label }}');
+    const subsystemSelect = document.getElementById('{{ form.nb_subsystem.id_for_label }}');
+    const componentSelect = document.getElementById('{{ form.nb_component.id_for_label }}');
+    const instanceNameInput = document.getElementById('{{ form.nb_instance.id_for_label }}');
+    const fullNameInput = document.getElementById('{{ form.nb_name.id_for_label }}');
+    const applyButton = document.getElementById('name-builder-apply');
+    const targetNameInput = document.getElementById('{{ target_field.id_for_label }}');
+    const targetSiteSelect = document.getElementById('{{ target_site.id_for_label }}');
+    const targetLocationSelect = document.getElementById('{{ target_location.id_for_label }}');
+    const modal = document.getElementById('custom-name-creation-modal');
+
+    siteSelect.addEventListener('change', updateName);
+    siteSelect.tomselect.on('load', () => updateSelect(siteSelect, 0));
+    locationSelect.addEventListener('change', updateName);
+    locationSelect.tomselect.on('load', () => updateSelect(locationSelect, 1));
+    systemSelect.addEventListener('change', updateName);
+    systemSelect.tomselect.on('load', () => updateSelect(systemSelect, 2));
+    subsystemSelect.addEventListener('change', updateName);
+    subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect, 3));
+    componentSelect.addEventListener('change', updateName);
+    componentSelect.tomselect.on('load', () => updateSelect(componentSelect, 4));
+    instanceNameInput.addEventListener('input', updateName);
+    fullNameInput.addEventListener('input', updateAllSelects);
+    targetNameInput.addEventListener('input', () => {
+        fullNameInput.value = targetNameInput.value;
+        updateAllSelects();
+    });
+    targetSiteSelect?.addEventListener('change', () => {
+        if (siteSelect.tomselect.getValue() !== targetSiteSelect.tomselect.getValue()) {
+            const option = targetSiteSelect.tomselect.options[targetSiteSelect.tomselect.getValue()];
+            siteSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            siteSelect.tomselect.setValue(targetSiteSelect.tomselect.getValue());
+        }
+    });
+    targetLocationSelect?.addEventListener('change', () => {
+        if (locationSelect.tomselect.getValue() !== targetLocationSelect.tomselect.getValue()) {
+            const option = targetLocationSelect.tomselect.options[targetLocationSelect.tomselect.getValue()];
+            locationSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            locationSelect.tomselect.setValue(targetLocationSelect.tomselect.getValue());
+        }
+    });
+
+    siteSelect.tomselect.refreshOptions();
+    systemSelect.tomselect.refreshOptions();
+    fullNameInput.value = targetNameInput.value;
+    instanceNameInput.value = fullNameInput.value.split('-').length > 5 ? fullNameInput.value.split('-').slice(5).join('-') : '';
+
+    let shouldUpdateName = true;
+    function updateName() {
+        if (!shouldUpdateName || document.activeElement === fullNameInput) return;
+
+        shouldUpdateName = false;
+        const currentParts = fullNameInput.value.split('-') ?? [];
+
+        const siteName = siteSelect.tomselect.options[siteSelect.tomselect.getValue()]?.display ?? currentParts[0] ?? '';
+        const locationName = locationSelect.tomselect.options[locationSelect.tomselect.getValue()]?.display ?? currentParts[1] ?? '';
+        const systemName = systemSelect.tomselect.options[systemSelect.tomselect.getValue()]?.display ?? currentParts[2] ?? '';
+        const subsystemName = subsystemSelect.tomselect.options[subsystemSelect.tomselect.getValue()]?.display ?? currentParts[3] ?? '';
+        const componentName = componentSelect.tomselect.options[componentSelect.tomselect.getValue()]?.display ?? currentParts[4] ?? '';
+        const instanceName = instanceNameInput.value ?? currentParts.slice(5).join('-') ?? '';
+
+        fullNameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${instanceName}`;
+
+        updateAllSelects();
+        shouldUpdateName = true;
+    }
+
+    function updateAllSelects(clear=false) {
+        const parts = fullNameInput.value.split('-');
+        instanceNameInput.value = parts.length > 5 ? parts.slice(5).join('-') : '';
+        applyButton.disabled = !instanceNameInput.value;
+        updateSelect(siteSelect, 0, clear);
+        updateSelect(locationSelect, 1, clear);
+        updateSelect(systemSelect, 2, clear);
+        updateSelect(subsystemSelect, 3, clear);
+        updateSelect(componentSelect, 4, clear);
+    }
+
+    function updateSelect(elem, part) {
+        const tomselect = elem.tomselect;
+        const descriptionSpan = elem.parentElement.parentElement.getElementsByClassName("form-text")[0];
+        const name = fullNameInput.value.split('-')[part];
+        if (!name) {
+            if (part === 1 && siteSelect.tomselect.getValue() && autoSelectPreferredValue(tomselect, "{{ prefer_location }}")) {
+                return;
+            } else if (part === 2 && autoSelectPreferredValue(tomselect, "{{ prefer_system }}")) {
+                return;
+            } else if (part === 3 && systemSelect.tomselect.getValue() && autoSelectPreferredValue(tomselect, "{{ prefer_subsystem }}")) {
+                return;
+            }
+            tomselect.clear();
+            applyButton.disabled = true;
+            if (descriptionSpan) descriptionSpan.textContent = '';
+            return;
+        }
+
+        const option = Object.values(tomselect.options).find((o) => o.display === name);
+        if (!option) {
+            tomselect.clear();
+            applyButton.disabled = true;
+            if (descriptionSpan) descriptionSpan.textContent = '';
+            return;
+        }
+
+        if (descriptionSpan) descriptionSpan.textContent = option.description;
+        if (tomselect.getValue() != option.id) {
+            tomselect.setValue(option.id);
+        }
+    }
+
+    function autoSelectPreferredValue(tomselect, preferredName) {
+        if (!preferredName || document.activeElement === fullNameInput) return false;
+        const option = Object.values(tomselect.options).find((o) => o.display === preferredName);
+        if (option) {
+            if (tomselect.getValue() != option.id) {
+                tomselect.setValue(option.id);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    applyButton.addEventListener('click', function() {
+        if (siteSelect.tomselect.getValue() !== targetSiteSelect?.tomselect.getValue()) {
+            const option = siteSelect.tomselect.options[siteSelect.tomselect.getValue()];
+            targetSiteSelect?.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            targetSiteSelect?.tomselect.setValue(siteSelect.tomselect.getValue());
+        }
+        if (locationSelect.tomselect.getValue() !== targetLocationSelect?.tomselect.getValue()) {
+            const option = locationSelect.tomselect.options[locationSelect.tomselect.getValue()];
+            targetLocationSelect?.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
+            targetLocationSelect?.tomselect.setValue(locationSelect.tomselect.getValue());
+        }
+        targetNameInput.value = fullNameInput.value;
+        Modal.getInstance(modal).hide();
+    });
+});
+</script>

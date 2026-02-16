@@ -1097,6 +1097,12 @@ class RackNonRackedView(generic.ObjectChildrenView):
 class RackEditView(generic.ObjectEditView):
     queryset = Rack.objects.all()
     form = forms.RackForm
+    template_name = 'dcim/rack_edit.html'
+
+    def get_extra_context(self, request, instance):
+        return {
+            'name_builder_form': forms.NameBuilderForm(),
+        }
 
 
 @register_model_view(Rack, 'delete')
@@ -2497,6 +2503,11 @@ class DeviceEditView(generic.ObjectEditView):
     queryset = Device.objects.all()
     form = forms.DeviceForm
     template_name = 'dcim/device_edit.html'
+
+    def get_extra_context(self, request, instance):
+        return {
+            'name_builder_form': forms.NameBuilderForm(),
+        }
 
 
 @register_model_view(Device, 'delete')
