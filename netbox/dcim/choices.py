@@ -902,16 +902,21 @@ class InterfaceTypeChoices(ChoiceSet):
     # GigabitEthernet
     TYPE_1GE_BX10_D = '1000base-bx10-d'
     TYPE_1GE_BX10_U = '1000base-bx10-u'
+    TYPE_1GE_BX20_D = '1000base-bx20-d'
+    TYPE_1GE_BX20_U = '1000base-bx20-u'
+    TYPE_1GE_BX40_D = '1000base-bx40-d'
+    TYPE_1GE_BX40_U = '1000base-bx40-u'
     TYPE_1GE_CWDM = '1000base-cwdm'
     TYPE_1GE_CX = '1000base-cx'
     TYPE_1GE_DWDM = '1000base-dwdm'
     TYPE_1GE_EX = '1000base-ex'
-    TYPE_1GE_SX_FIXED = '1000base-sx'  # TODO: Drop _FIXED suffix
+    TYPE_1GE_SX = '1000base-sx'
     TYPE_1GE_LSX = '1000base-lsx'
-    TYPE_1GE_LX_FIXED = '1000base-lx'  # TODO: Drop _FIXED suffix
-    TYPE_1GE_LX10 = '1000base-lx10'
+    TYPE_1GE_LX = '1000base-lx'
+    # TYPE_1GE_LX10 = '1000base-lx10'
     TYPE_1GE_FIXED = '1000base-t'  # TODO: Rename to _T
     TYPE_1GE_TX_FIXED = '1000base-tx'  # TODO: Drop _FIXED suffix
+    TYPE_1GE_LH = '1000base-lh'
     TYPE_1GE_ZX = '1000base-zx'
 
     # 2.5/5 Gbps Ethernet
@@ -929,6 +934,10 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_10GE_SR = '10gbase-sr'
     TYPE_10GE_FIXED = '10gbase-t'
     TYPE_10GE_ZR = '10gbase-zr'
+    TYPE_10GE_BX20_D = '10gbbase-bx20-d'
+    TYPE_10GE_BX20_U = '10gbbase-bx20-u'
+    TYPE_10GE_BX40_D = '10gbbase-bx40-d'
+    TYPE_10GE_BX40_U = '10gbbase-bx40-u'
 
     # 25 Gbps Ethernet
     TYPE_25GE_CR = '25gbase-cr'
@@ -1141,6 +1150,14 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_SUMMITSTACK256 = 'extreme-summitstack-256'
     TYPE_SUMMITSTACK512 = 'extreme-summitstack-512'
 
+    # Telephony
+    TYPE_ANALOG = 'analog'
+    TYPE_NUMERIC = 'numeric'
+    TYPE_T1_PRI = 't1-pri'
+
+    # Sonorisation
+    
+
     # Other
     TYPE_OTHER = 'other'
 
@@ -1167,16 +1184,20 @@ class InterfaceTypeChoices(ChoiceSet):
             (
                 (TYPE_1GE_BX10_D, '1000BASE-BX10-D (1GE BiDi Down)'),
                 (TYPE_1GE_BX10_U, '1000BASE-BX10-U (1GE BiDi Up)'),
+                (TYPE_1GE_BX20_D, '1000BASE-BX20-D (1GE BiDi Down)'),
+                (TYPE_1GE_BX20_U, '1000BASE-BX20-U (1GE BiDi Up)'),
+                (TYPE_1GE_BX40_D, '1000BASE-BX40-D (1GE BiDi Down)'),
+                (TYPE_1GE_BX40_U, '1000BASE-BX40-U (1GE BiDi Up)'),
                 (TYPE_1GE_CWDM, '1000BASE-CWDM (1GE)'),
                 (TYPE_1GE_CX, '1000BASE-CX (1GE DAC)'),
                 (TYPE_1GE_DWDM, '1000BASE-DWDM (1GE)'),
                 (TYPE_1GE_EX, '1000BASE-EX (1GE)'),
                 (TYPE_1GE_LSX, '1000BASE-LSX (1GE)'),
-                (TYPE_1GE_LX_FIXED, '1000BASE-LX (1GE)'),
-                (TYPE_1GE_LX10, '1000BASE-LX10/LH (1GE)'),
-                (TYPE_1GE_SX_FIXED, '1000BASE-SX (1GE)'),
+                (TYPE_1GE_LX, '1000BASE-LX (1GE)'),
+                (TYPE_1GE_SX, '1000BASE-SX (1GE)'),
                 (TYPE_1GE_FIXED, '1000BASE-T (1GE)'),
                 (TYPE_1GE_TX_FIXED, '1000BASE-TX (1GE)'),
+                (TYPE_1GE_LH, '1000BASE-LH (1GE)'),
                 (TYPE_1GE_ZX, '1000BASE-ZX (1GE)'),
             ),
         ),
@@ -1192,6 +1213,10 @@ class InterfaceTypeChoices(ChoiceSet):
             (
                 (TYPE_10GE_BR_D, '10GBASE-BR-D (10GE BiDi Down)'),
                 (TYPE_10GE_BR_U, '10GBASE-BR-U (10GE BiDi Up)'),
+                (TYPE_10GE_BX20_D, '10GBASE-BX20-D (10GE BiDi Down)'),
+                (TYPE_10GE_BX20_U, '10GBASE-BX20-U (10GE BiDi Up)'),
+                (TYPE_10GE_BX40_D, '10GBASE-BX40-D (10GE BiDi Down)'),
+                (TYPE_10GE_BX40_U, '10GBASE-BX40-U (10GE BiDi Up)'),
                 (TYPE_10GE_CX4, '10GBASE-CX4 (10GE DAC)'),
                 (TYPE_10GE_ER, '10GBASE-ER (10GE)'),
                 (TYPE_10GE_LR, '10GBASE-LR (10GE)'),
@@ -1471,6 +1496,14 @@ class InterfaceTypeChoices(ChoiceSet):
             )
         ),
         (
+            _('Telephony'),
+            (
+                (TYPE_ANALOG, 'Analog'),
+                (TYPE_NUMERIC, 'Numeric'),
+                (TYPE_T1_PRI, 'T1 PRI'),
+            )
+        ),
+        (
             _('Other'),
             (
                 (TYPE_OTHER, _('Other')),
@@ -1576,23 +1609,21 @@ class InterfacePoETypeChoices(ChoiceSet):
 
 class PortTypeChoices(ChoiceSet):
 
-    TYPE_8P8C = '8p8c'
-    TYPE_8P6C = '8p6c'
+    TYPE_RJ45 = 'rj45'
+    # TYPE_8P6C = '8p6c'
     TYPE_8P4C = '8p4c'
     TYPE_8P2C = '8p2c'
-    TYPE_6P6C = '6p6c'
+    # TYPE_6P6C = '6p6c'
     TYPE_6P4C = '6p4c'
     TYPE_6P2C = '6p2c'
     TYPE_4P4C = '4p4c'
     TYPE_4P2C = '4p2c'
-    TYPE_GG45 = 'gg45'
-    TYPE_TERA4P = 'tera-4p'
-    TYPE_TERA2P = 'tera-2p'
-    TYPE_TERA1P = 'tera-1p'
     TYPE_110_PUNCH = '110-punch'
+    TYPE_BIX_PUNCH = 'bix-punch'
     TYPE_BNC = 'bnc'
     TYPE_F = 'f'
     TYPE_N = 'n'
+    TYPE_RJ21 = 'rj21'
     TYPE_MRJ21 = 'mrj21'
     TYPE_ST = 'st'
     TYPE_SC = 'sc'
@@ -1607,24 +1638,10 @@ class PortTypeChoices(ChoiceSet):
     TYPE_LC_PC = 'lc-pc'
     TYPE_LC_UPC = 'lc-upc'
     TYPE_LC_APC = 'lc-apc'
-    TYPE_MTRJ = 'mtrj'
     TYPE_MPO = 'mpo'
-    TYPE_LSH = 'lsh'
-    TYPE_LSH_PC = 'lsh-pc'
-    TYPE_LSH_UPC = 'lsh-upc'
-    TYPE_LSH_APC = 'lsh-apc'
-    TYPE_LX5 = 'lx5'
-    TYPE_LX5_PC = 'lx5-pc'
-    TYPE_LX5_UPC = 'lx5-upc'
-    TYPE_LX5_APC = 'lx5-apc'
     TYPE_SPLICE = 'splice'
-    TYPE_CS = 'cs'
-    TYPE_SN = 'sn'
-    TYPE_SMA_905 = 'sma-905'
-    TYPE_SMA_906 = 'sma-906'
-    TYPE_URM_P2 = 'urm-p2'
-    TYPE_URM_P4 = 'urm-p4'
-    TYPE_URM_P8 = 'urm-p8'
+    TYPE_SPLICE_FUSION = 'splice-fusion'
+    TYPE_SPLICE_MECHANICAL = 'splice-mechanical'
     TYPE_USB_A = 'usb-a'
     TYPE_USB_B = 'usb-b'
     TYPE_USB_C = 'usb-c'
@@ -1639,23 +1656,21 @@ class PortTypeChoices(ChoiceSet):
         (
             _('Copper'),
             (
-                (TYPE_8P8C, '8P8C'),
-                (TYPE_8P6C, '8P6C'),
-                (TYPE_8P4C, '8P4C'),
-                (TYPE_8P2C, '8P2C'),
-                (TYPE_6P6C, '6P6C'),
-                (TYPE_6P4C, '6P4C'),
-                (TYPE_6P2C, '6P2C'),
-                (TYPE_4P4C, '4P4C'),
-                (TYPE_4P2C, '4P2C'),
-                (TYPE_GG45, 'GG45'),
-                (TYPE_TERA4P, 'TERA 4P'),
-                (TYPE_TERA2P, 'TERA 2P'),
-                (TYPE_TERA1P, 'TERA 1P'),
+                (TYPE_RJ45, 'RJ45'),
+                # (TYPE_8P6C, '8P6C'),
+                (TYPE_8P4C, '8P4C RJ45'),
+                (TYPE_8P2C, '8P2C RJ45'),
+                # (TYPE_6P6C, '6P6C RJ12'),
+                (TYPE_6P4C, '6P4C RJ12'),
+                (TYPE_6P2C, '6P2C RJ12'),
+                (TYPE_4P4C, '4P4C RJ11'),
+                (TYPE_4P2C, '4P2C RJ11'),
                 (TYPE_110_PUNCH, '110 Punch'),
+                (TYPE_BIX_PUNCH, 'BIX Punch'),
                 (TYPE_BNC, 'BNC'),
                 (TYPE_F, 'F Connector'),
                 (TYPE_N, 'N Connector'),
+                (TYPE_RJ21, 'RJ21 Amphenol'),
                 (TYPE_MRJ21, 'MRJ21'),
             ),
         ),
@@ -1670,29 +1685,15 @@ class PortTypeChoices(ChoiceSet):
                 (TYPE_LC_PC, 'LC/PC'),
                 (TYPE_LC_UPC, 'LC/UPC'),
                 (TYPE_LC_APC, 'LC/APC'),
-                (TYPE_LSH, 'LSH'),
-                (TYPE_LSH_PC, 'LSH/PC'),
-                (TYPE_LSH_UPC, 'LSH/UPC'),
-                (TYPE_LSH_APC, 'LSH/APC'),
-                (TYPE_LX5, 'LX.5'),
-                (TYPE_LX5_PC, 'LX.5/PC'),
-                (TYPE_LX5_UPC, 'LX.5/UPC'),
-                (TYPE_LX5_APC, 'LX.5/APC'),
                 (TYPE_MPO, 'MPO'),
-                (TYPE_MTRJ, 'MTRJ'),
                 (TYPE_SC, 'SC'),
                 (TYPE_SC_PC, 'SC/PC'),
                 (TYPE_SC_UPC, 'SC/UPC'),
                 (TYPE_SC_APC, 'SC/APC'),
                 (TYPE_ST, 'ST'),
-                (TYPE_CS, 'CS'),
-                (TYPE_SN, 'SN'),
-                (TYPE_SMA_905, 'SMA 905'),
-                (TYPE_SMA_906, 'SMA 906'),
-                (TYPE_URM_P2, 'URM-P2'),
-                (TYPE_URM_P4, 'URM-P4'),
-                (TYPE_URM_P8, 'URM-P8'),
                 (TYPE_SPLICE, 'Splice'),
+                (TYPE_SPLICE_FUSION, 'Splice (Fusion)'),
+                (TYPE_SPLICE_MECHANICAL, 'Splice (Mechanical)'),
             ),
         ),
         (
