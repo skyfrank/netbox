@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import EMPTY_VALUES
@@ -29,6 +31,7 @@ from wireless.models import WirelessLAN, WirelessLANGroup
 from .common import InterfaceCommonForm, ModuleCommonForm
 
 __all__ = (
+    'AssignDeviceToRackForm',
     'CableForm',
     'ConsolePortForm',
     'ConsolePortTemplateForm',
@@ -1673,6 +1676,151 @@ class DeviceBayForm(DeviceComponentForm):
         fields = [
             'device', 'name', 'label', 'description', 'owner', 'tags',
         ]
+
+
+class AssignDeviceToRackForm(forms.Form):
+    """
+    Form for assigning a device to a specific position in a rack.
+    """
+    site = DynamicModelChoiceField(
+        label=_('Site'),
+        required=False,
+        queryset=Site.objects.all(),
+    )
+    location = DynamicModelChoiceField(
+        label=_('Location'),
+        queryset=Location.objects.all(),
+        required=False,
+        query_params={
+            'site_id': '$site'
+        },
+    )
+    device = DynamicModelChoiceField(
+        label=_('Device'),
+        queryset=Device.objects.all(),
+        query_params={
+            'site_id': '$site',
+            'location_id': '$location',
+            'rack_id': 'null',
+        },
+        help_text=_('Select a device to assign to this rack position')
+    )
+    rack = DynamicModelChoiceField(
+        label=_('Rack'),
+        queryset=Rack.objects.all(),
+        query_params={
+            'site_id': '$site',
+            'location_id': '$location',
+        },
+    )
+    face = forms.ChoiceField(
+        label=_('Face'),
+        choices=DeviceFaceChoices,
+    )
+    position = forms.DecimalField(
+        label=_('Position'),
+        help_text=_("The lowest-numbered unit occupied by the device"),
+        localize=True,
+        widget=APISelect(
+            api_url='/api/dcim/racks/{{rack}}/elevation/',
+            attrs={
+                'data-dynamic-params': '[{"fieldName":"face","queryParam":"face"}]'
+            },
+        )
+    )
+
+    def __init__(self, rack, position, face, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._rack = rack
+        self._position = position
+        self._face = face
+
+        # Prefill fields with current rack context
+        self.fields['site'].initial = rack.site
+        self.fields['location'].initial = rack.location
+        self.fields['rack'].initial = rack
+        self.fields['face'].initial = face
+        self.fields['position'].initial = position
+        self.fields['position'].widget.choices = [(position, f'U{position}')]
+
+    def clean(self):
+        super().clean()
+
+        site = self.cleaned_data.get('site')
+        location = self.cleaned_data.get('location')
+        rack = self.cleaned_data.get('rack')
+        device = self.cleaned_data.get('device')
+        face = self.cleaned_data.get('face')
+        position = self.cleaned_data.get('position')
+
+        # Validate site/location/rack combination
+        if rack and site and rack.site != site:
+            raise forms.ValidationError({
+                'rack': _("Rack {rack} does not belong to site {site}.").format(rack=rack, site=site),
+            })
+        if location and site and location.site != site:
+            raise forms.ValidationError({
+                'location': _(
+                    "Location {location} does not belong to site {site}."
+                ).format(location=location, site=site)
+            })
+        if rack and location and rack.location != location:
+            raise forms.ValidationError({
+                'rack': _(
+                    "Rack {rack} does not belong to location {location}."
+                ).format(rack=rack, location=location)
+            })
+
+        # Validate position is in valid increments
+        if position and position % Decimal('0.5'):
+            raise forms.ValidationError({
+                'position': _("Position must be in increments of 0.5 rack units.")
+            })
+
+        # Validate device type constraints
+        device_type = device.device_type
+
+        # Prevent 0U devices from being assigned to a specific position
+        if position and device_type.u_height == 0:
+            raise forms.ValidationError({
+                'position': _(
+                    "A 0U device type ({device_type}) cannot be assigned to a rack position."
+                ).format(device_type=device_type)
+            })
+
+        # Child devices cannot be assigned to a rack face/unit
+        if device_type.is_child_device and face:
+            raise forms.ValidationError({
+                'face': _(
+                    "Child device types cannot be assigned to a rack face. This is an attribute of the parent device."
+                )
+            })
+        if device_type.is_child_device and position:
+            raise forms.ValidationError({
+                'position': _(
+                    "Child device types cannot be assigned to a rack position. This is an attribute of the parent "
+                    "device."
+                )
+            })
+
+        # Validate rack space availability
+        if rack and position and device_type.u_height > 0:
+            rack_face = face if not device_type.is_full_depth else None
+            available_units = rack.get_available_units(
+                u_height=device_type.u_height, rack_face=rack_face, exclude=[device.pk]
+            )
+            if position not in available_units:
+                raise forms.ValidationError({
+                    'position': _(
+                        "U{position} is already occupied or does not have sufficient space to accommodate this "
+                        "device type: {device_type} ({u_height}U)"
+                    ).format(
+                        position=position, device_type=device_type, u_height=device_type.u_height
+                    )
+                })
+
+        return self.cleaned_data
 
 
 class PopulateDeviceBayForm(forms.Form):

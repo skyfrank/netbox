@@ -300,7 +300,14 @@ class RackElevationSVG:
         Draw the rack unit placeholders which form the "background" of the rack elevation.
         """
         x_offset = RACK_ELEVATION_BORDER_WIDTH + self.legend_width
-        url_string = '{}?{}&position={{}}'.format(
+        assign_device_url_string = '{}?{}&position={{}}'.format(
+            reverse('dcim:rack', args=[self.rack.pk]),
+            urlencode({
+                'assign_device_form': True,
+                'face': face,
+            })
+        )
+        add_device_url_string = '{}?{}&position={{}}'.format(
             reverse('dcim:device_add'),
             urlencode({
                 'site': self.rack.site.pk,
@@ -314,15 +321,21 @@ class RackElevationSVG:
             unit = ru + 1 if self.rack.desc_units else self.rack.u_height - ru
             unit = unit + self.rack.starting_unit - 1
             y_offset = RACK_ELEVATION_BORDER_WIDTH + ru * self.unit_height
-            text_coords = (
-                x_offset + self.unit_width / 2,
-                y_offset + self.unit_height / 2
-            )
 
-            link = Hyperlink(href=url_string.format(unit), target='_parent')
-            link.add(Rect((x_offset, y_offset), (self.unit_width, self.unit_height), class_='slot'))
-            link.add(Text('add device', insert=text_coords, class_='add-device'))
+            # Background rect
+            rect = Rect((x_offset, y_offset), (self.unit_width, self.unit_height), class_='slot')
+            self.drawing.add(rect)
 
+            # Left half - assign device link
+            link = Hyperlink(href=assign_device_url_string.format(unit), target='_parent')
+            link.add(Rect((x_offset, y_offset), (self.unit_width / 2, self.unit_height), class_='slot half-slot'))
+            link.add(Text('assign device', insert=(x_offset + self.unit_width / 4, y_offset + self.unit_height / 2), class_='device-link'))
+            self.drawing.add(link)
+
+            # # Right half - add device link
+            link = Hyperlink(href=add_device_url_string.format(unit), target='_parent')
+            link.add(Rect((x_offset + self.unit_width / 2, y_offset), (self.unit_width / 2, self.unit_height), class_='slot half-slot'))
+            link.add(Text('add device', insert=(x_offset + 3 * self.unit_width / 4, y_offset + self.unit_height / 2), class_='device-link'))
             self.drawing.add(link)
 
     def draw_face(self, face, opposite=False):
