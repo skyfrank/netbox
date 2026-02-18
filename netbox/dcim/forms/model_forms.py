@@ -1363,7 +1363,7 @@ class InventoryItemTemplateForm(ComponentTemplateForm):
         ]
         if len(selected_objects) > 1:
             raise forms.ValidationError(_("An InventoryItem can only be assigned to a single component."))
-        elif selected_objects:
+        if selected_objects:
             self.instance.component = self.cleaned_data[selected_objects[0]]
         else:
             self.instance.component = None
@@ -1994,7 +1994,7 @@ class InventoryItemForm(DeviceComponentForm):
         ]
         if len(selected_objects) > 1:
             raise forms.ValidationError(_("An InventoryItem can only be assigned to a single component."))
-        elif selected_objects:
+        if selected_objects:
             self.instance.component = self.cleaned_data[selected_objects[0]]
         else:
             self.instance.component = None
@@ -2129,7 +2129,7 @@ class MACAddressForm(PrimaryModelForm):
             raise forms.ValidationError({
                 selected_objects[1]: _("A MAC address can only be assigned to a single object.")
             })
-        elif selected_objects:
+        if selected_objects:
             self.instance.assigned_object = self.cleaned_data[selected_objects[0]]
         else:
             self.instance.assigned_object = None
