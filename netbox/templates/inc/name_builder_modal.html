@@ -99,17 +99,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const targetLocationSelect = document.getElementById('{{ target_location.id_for_label }}');
     const modal = document.getElementById('custom-name-creation-modal');
 
-    siteSelect.addEventListener('change', updateName);
+    siteSelect.addEventListener('change', () => updateName(0));
     siteSelect.tomselect.on('load', () => updateSelect(siteSelect, 0));
-    locationSelect.addEventListener('change', updateName);
+    siteSelect.tomselect.on('clear', () => onSelectClear(0));
+    locationSelect.addEventListener('change', () => updateName(1));
     locationSelect.tomselect.on('load', () => updateSelect(locationSelect, 1));
-    systemSelect.addEventListener('change', updateName);
+    locationSelect.tomselect.on('clear', () => onSelectClear(1));
+    systemSelect.addEventListener('change', () => updateName(2));
     systemSelect.tomselect.on('load', () => updateSelect(systemSelect, 2));
-    subsystemSelect.addEventListener('change', updateName);
+    systemSelect.tomselect.on('clear', () => onSelectClear(2));
+    subsystemSelect.addEventListener('change', () => updateName(3));
     subsystemSelect.tomselect.on('load', () => updateSelect(subsystemSelect, 3));
-    componentSelect.addEventListener('change', updateName);
+    subsystemSelect.tomselect.on('clear', () => onSelectClear(3));
+    componentSelect.addEventListener('change', () => updateName(4));
     componentSelect.tomselect.on('load', () => updateSelect(componentSelect, 4));
-    instanceNameInput.addEventListener('input', updateName);
+    componentSelect.tomselect.on('clear', () => onSelectClear(4));
+    instanceNameInput.addEventListener('input', () => updateName(5));
     fullNameInput.addEventListener('input', updateAllSelects);
     targetNameInput.addEventListener('input', () => {
         fullNameInput.value = targetNameInput.value;
@@ -208,6 +213,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         }
         return false;
+    }
+
+    function onSelectClear(part) {
+        if (!shouldUpdateName || document.activeElement === fullNameInput) return;
+        shouldUpdateName = false;
+        const currentParts = fullNameInput.value.split('-') ?? [];
+        currentParts[part] = '';
+        fullNameInput.value = currentParts.join('-');
+        updateAllSelects();
+        shouldUpdateName = true;
     }
 
     applyButton.addEventListener('click', function() {
