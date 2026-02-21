@@ -55,7 +55,26 @@
   {% render_field form.status %}
   {% render_field form.profile %}
   {% render_field form.type %}
-  {% render_field form.label %}
+  <div class="row mb-3{% if form.label.errors %} has-errors{% endif %}">
+    <div class="col-sm-3 text-lg-end">
+      <label for="{{ form.label.id_for_label }}" class="col-form-label d-inline-block{% if form.label.field.required %} required{% endif %}">
+        {{ form.label.label }}
+      </label>
+    </div>
+
+    <div class="col">
+      <div class="d-flex">
+        {{ form.label }}
+        {% include 'inc/name_builder_modal.html' with form=name_builder_form target_field=form.label %}
+      </div>
+
+      {% if form.label.errors %}
+        <div class="form-text text-danger">
+          {% for error in form.label.errors %}{{ error }}{% if not forloop.last %}<br />{% endif %}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
   {% render_field form.description %}
   {% render_field form.color %}
   <div class="row mb-3">
