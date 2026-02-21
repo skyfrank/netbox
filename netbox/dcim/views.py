@@ -1217,6 +1217,19 @@ class RackView(GetRelatedModelsMixin, generic.ObjectView):
             f'highlight=id:{pk}' for pk in request.GET.getlist('device')
         ])
 
+        # Create form for assigning device to rack if requested
+        assign_device_form = None
+        if (
+            request.GET.get('assign_device_form')
+            and request.GET.get('face')
+            and request.GET.get('position')
+        ):
+            assign_device_form = forms.AssignDeviceToRackForm(
+                rack=instance,
+                position=request.GET.get('position'),
+                face=request.GET.get('face'),
+            )
+
         return {
             'related_models': self.get_related_models(
                 request,
@@ -1234,7 +1247,50 @@ class RackView(GetRelatedModelsMixin, generic.ObjectView):
             'prev_rack': prev_rack,
             'svg_extra': svg_extra,
             'peer_racks': peer_racks,
+            'assign_device_form': assign_device_form,
         }
+
+    def post(self, request, pk):
+        rack = get_object_or_404(self.queryset, pk=pk)
+        form = forms.AssignDeviceToRackForm(
+            rack=rack,
+            position=request.POST.get('position'),
+            face=request.POST.get('face'),
+            data=request.POST,
+        )
+
+        if form.is_valid():
+            device = form.cleaned_data['device']
+            device.snapshot()
+            device.site = form.cleaned_data['site']
+            device.location = form.cleaned_data.get('location')
+            device.rack = form.cleaned_data['rack']
+            device.position = form.cleaned_data['position']
+            device.face = form.cleaned_data['face']
+            device.save()
+            messages.success(
+                request,
+                _(
+                    'Assigned {device} to rack {rack} at position U{position} ({face}).'
+                ).format(
+                    device=device,
+                    rack=device.rack,
+                    position=device.position,
+                    face=device.face,
+                ),
+            )
+            return redirect(rack.get_absolute_url())
+
+        # If form is invalid, re-render the page with errors
+        return render(
+            request,
+            'dcim/rack.html',
+            {
+                **self.get_extra_context(request, rack),
+                'object': rack,
+                'assign_device_form': form,
+            },
+        )
 
 
 @register_model_view(Rack, 'reservations')
