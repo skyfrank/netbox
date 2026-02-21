@@ -4396,6 +4396,10 @@ class CableEditView(generic.ObjectEditView):
 
         return super().alter_object(obj, request, url_args, url_kwargs)
 
+    def get_extra_context(self, request, instance):
+        return {
+            'name_builder_form': forms.NameBuilderForm(),
+        }
 
 @register_model_view(Cable, 'delete')
 class CableDeleteView(generic.ObjectDeleteView):
