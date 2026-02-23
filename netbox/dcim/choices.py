@@ -926,6 +926,7 @@ class InterfaceTypeChoices(ChoiceSet):
     # 10 Gbps Ethernet
     TYPE_10GE_BR_D = '10gbase-br-d'
     TYPE_10GE_BR_U = '10gbase-br-u'
+    TYPE_10GE_CU = '10gbase-cu'
     TYPE_10GE_CX4 = '10gbase-cx4'
     TYPE_10GE_ER = '10gbase-er'
     TYPE_10GE_LR = '10gbase-lr'
@@ -952,6 +953,7 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_40GE_FR4 = '40gbase-fr4'
     TYPE_40GE_LR4 = '40gbase-lr4'
     TYPE_40GE_SR4 = '40gbase-sr4'
+    TYPE_40GE_SR4_BD = '40gbase-sr4-bd'
 
     # 50 Gbps Ethernet
     TYPE_50GE_CR = '50gbase-cr'
@@ -1217,6 +1219,7 @@ class InterfaceTypeChoices(ChoiceSet):
                 (TYPE_10GE_BX20_U, '10GBASE-BX20-U (10GE BiDi Up)'),
                 (TYPE_10GE_BX40_D, '10GBASE-BX40-D (10GE BiDi Down)'),
                 (TYPE_10GE_BX40_U, '10GBASE-BX40-U (10GE BiDi Up)'),
+                (TYPE_10GE_CU, '10GBASE-CU (10GE DAC Passive Twinax)'),
                 (TYPE_10GE_CX4, '10GBASE-CX4 (10GE DAC)'),
                 (TYPE_10GE_ER, '10GBASE-ER (10GE)'),
                 (TYPE_10GE_LR, '10GBASE-LR (10GE)'),
@@ -1245,6 +1248,7 @@ class InterfaceTypeChoices(ChoiceSet):
                 (TYPE_40GE_FR4, '40GBASE-FR4 (40GE)'),
                 (TYPE_40GE_LR4, '40GBASE-LR4 (40GE)'),
                 (TYPE_40GE_SR4, '40GBASE-SR4 (40GE)'),
+                (TYPE_40GE_SR4_BD, '40GBASE-SR4 (40GE BiDi)'),
             )
         ),
         (
