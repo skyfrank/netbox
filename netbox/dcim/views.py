@@ -17,6 +17,7 @@ from extras.ui.panels import CustomFieldsPanel, ImageAttachmentsPanel, TagsPanel
 from extras.views import ObjectConfigContextView, ObjectRenderConfigView
 from ipam.models import ASN, VLAN, IPAddress, Prefix, VLANGroup
 from ipam.tables import VLANTranslationRuleTable
+from netbox.config import get_config
 from ipam.ui.panels import FHRPGroupAssignmentsPanel
 from netbox.object_actions import *
 from netbox.ui import actions, layout
@@ -1113,8 +1114,13 @@ class RackEditView(generic.ObjectEditView):
     template_name = 'dcim/rack_edit.html'
 
     def get_extra_context(self, request, instance):
+        # used to send the regex validator to the javascript to help validate the rack name in the name builder form, if configured
+        validators = get_config().config.get('CUSTOM_VALIDATORS', {}).get('dcim.rack', [])
+        name_regex_validator = [v.get('name', {}).get('regex') for v in validators if v.get('name', {}).get('regex')]
+        # must return empty string if no regex validator is configured, this way the default regex value in name builder form will be used
         return {
             'name_builder_form': forms.NameBuilderForm(),
+            'name_regex_validator': name_regex_validator[0] if name_regex_validator else '',
         }
 
 
@@ -2577,8 +2583,13 @@ class DeviceEditView(generic.ObjectEditView):
     template_name = 'dcim/device_edit.html'
 
     def get_extra_context(self, request, instance):
+        # used to send the regex validator to the javascript to help validate the device name in the name builder form, if configured
+        validators = get_config().config.get('CUSTOM_VALIDATORS', {}).get('dcim.device', [])
+        name_regex_validator = [v.get('name', {}).get('regex') for v in validators if v.get('name', {}).get('regex')]
+        # must return empty string if no regex validator is configured, this way the default regex value in name builder form will be used
         return {
             'name_builder_form': forms.NameBuilderForm(),
+            'name_regex_validator': name_regex_validator[0] if name_regex_validator else '',
         }
 
 
@@ -4223,8 +4234,13 @@ class CableEditView(generic.ObjectEditView):
         return params
 
     def get_extra_context(self, request, instance):
+        # used to send the regex validator to the javascript to help validate the cable/support name in the name builder form, if configured
+        validators = get_config().config.get('CUSTOM_VALIDATORS', {}).get('gestion_cables.support', [])
+        name_regex_validator = [v.get('name', {}).get('regex') for v in validators if v.get('name', {}).get('regex')]
+        # must return empty string if no regex validator is configured, this way the default regex value in name builder form will be used
         return {
             'name_builder_form': forms.NameBuilderForm(),
+            'name_regex_validator': name_regex_validator[0] if name_regex_validator else '',
         }
 
 

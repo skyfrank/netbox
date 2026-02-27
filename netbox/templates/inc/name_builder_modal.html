@@ -90,7 +90,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const locationSelect = document.getElementById('{{ form.nb_location.id_for_label }}');
     const systemSelect = document.getElementById('{{ form.nb_system.id_for_label }}');
     const subsystemSelect = document.getElementById('{{ form.nb_subsystem.id_for_label }}');
+    // Update searchField to only use 'display' for these two selects.
+    if (subsystemSelect && subsystemSelect.tomselect) {
+        subsystemSelect.tomselect.settings.searchField = ['display'];
+    }
     const componentSelect = document.getElementById('{{ form.nb_component.id_for_label }}');
+    if (componentSelect && componentSelect.tomselect) {
+        componentSelect.tomselect.settings.searchField = ['display'];
+    }
     const instanceNameInput = document.getElementById('{{ form.nb_instance.id_for_label }}');
     const fullNameInput = document.getElementById('{{ form.nb_name.id_for_label }}');
     const applyButton = document.getElementById('name-builder-apply');
@@ -114,8 +121,69 @@ document.addEventListener('DOMContentLoaded', function() {
     componentSelect.addEventListener('change', () => updateName(4));
     componentSelect.tomselect.on('load', () => updateSelect(componentSelect, 4));
     componentSelect.tomselect.on('clear', () => onSelectClear(4));
-    instanceNameInput.addEventListener('input', () => updateName(5));
-    fullNameInput.addEventListener('input', updateAllSelects);
+    
+    instanceNameInput.addEventListener('input', () => {
+        // Replace dashes with underscores and force uppercase
+        instanceNameInput.value = instanceNameInput.value.replace(/-/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toUpperCase();
+        updateName(5);
+    });
+    // Regex validation for fullNameInput (gets inserted into the DOM as a string, so we need to convert it back to a RegExp object)
+    const fullNameRegex = new RegExp("{{ name_regex_validator | default:'^[A-Z0-9]{4}-[A-Z]{2}\d{4}-[A-Z0-9]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-\w+$' | escapejs }}");
+    fullNameInput.addEventListener('input', validateFullName, false);
+    // fullNameInput.addEventListener('change', validateFullName, false);
+
+    function validateFullName() {
+        // Remove invalid characters and force uppercase
+        let raw = fullNameInput.value.replace(/[^a-zA-Z0-9_]/gi, '').toUpperCase();
+
+        // Try to auto-insert dashes based on the regex pattern if possible
+        // This assumes the regex is of the form: /^[A-Z0-9]{4}-[A-Z]{2}\d{4}-[A-Z0-9]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-\w+$/
+        // We'll extract the dash positions from the regex pattern string
+        let dashPositions = [];
+        let regexStr = fullNameRegex.source;
+        let match;
+        let segmentLengths = [];
+        let segmentRegex = /\{(\d+)\}(-?)/g;
+        let lastIndex = 0;
+        let cumulativeLength = 0;
+        // Find all {n} in the regex and calculate dash positions
+        while ((match = segmentRegex.exec(regexStr)) !== null) {
+            // Check if the capture group contains a dash
+            if (match[2] === '-') {
+                // If dash is present, split and add each segment length separately
+                let len = parseInt(match[1]);
+                segmentLengths.push(len+cumulativeLength);
+                lastIndex += len + cumulativeLength;
+                dashPositions.push(lastIndex);
+                lastIndex++; // for the dash
+                cumulativeLength = 0; // reset cumulative length after a dash
+            } else {
+                // No dash, add parsed Int to the next segment via cumulativeLength
+                let len = parseInt(match[1]);
+                cumulativeLength = len;
+                lastIndex += len;
+            }
+        }
+
+        // Build formatted string with dashes at the right positions
+        let formatted = '';
+        let idx = 0;
+        for (let i = 0; i < segmentLengths.length; i++) {
+            let segment = raw.substr(idx, segmentLengths[i]);
+            formatted += segment;
+            idx += segmentLengths[i];
+            if (i < dashPositions.length && segment.length === segmentLengths[i]) {
+                formatted += '-';
+            }
+        }
+        // Add any remaining characters (for the last segment, which may be variable length)
+        if (idx < raw.length) {
+            formatted += raw.substr(idx);
+        }
+        fullNameInput.value = formatted;
+        updateAllSelects();
+    }
+
     targetNameInput.addEventListener('input', () => {
         fullNameInput.value = targetNameInput.value;
         updateAllSelects();
@@ -155,6 +223,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const instanceName = instanceNameInput.value ?? currentParts.slice(5).join('-') ?? '';
 
         fullNameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${instanceName}`;
+        
+        // trigger input event to re-validate and update selects based on new full name
+        fullNameInput.dispatchEvent(new Event('input'));
 
         updateAllSelects();
         shouldUpdateName = true;
