@@ -915,7 +915,7 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_1GE_LX = '1000base-lx'
     # TYPE_1GE_LX10 = '1000base-lx10'
     TYPE_1GE_FIXED = '1000base-t'  # TODO: Rename to _T
-    TYPE_1GE_TX_FIXED = '1000base-tx'  # TODO: Drop _FIXED suffix
+    # TYPE_1GE_TX_FIXED = '1000base-tx'  # TODO: Drop _FIXED suffix
     TYPE_1GE_LH = '1000base-lh'
     TYPE_1GE_ZX = '1000base-zx'
 
@@ -1208,7 +1208,7 @@ class InterfaceTypeChoices(ChoiceSet):
                 (TYPE_1GE_LX, '1000BASE-LX (1GE)'),
                 (TYPE_1GE_SX, '1000BASE-SX (1GE)'),
                 (TYPE_1GE_FIXED, '1000BASE-T (1GE)'),
-                (TYPE_1GE_TX_FIXED, '1000BASE-TX (1GE)'),
+                # (TYPE_1GE_TX_FIXED, '1000BASE-TX (1GE)'),
                 (TYPE_1GE_LH, '1000BASE-LH (1GE)'),
                 (TYPE_1GE_ZX, '1000BASE-ZX (1GE)'),
             ),
