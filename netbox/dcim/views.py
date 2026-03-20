@@ -15,8 +15,8 @@ from django.views.generic import View
 from circuits.models import Circuit, CircuitTermination
 from extras.ui.panels import CustomFieldsPanel, ImageAttachmentsPanel, TagsPanel
 from extras.views import ObjectConfigContextView, ObjectRenderConfigView
-from ipam.models import ASN, VLAN, IPAddress, Prefix, VLANGroup
-from ipam.tables import VLANTranslationRuleTable
+from ipam.models import ASN, IPAddress, Prefix, VLAN, VLANGroup
+from ipam.tables import InterfaceVLANTable, VLANTranslationRuleTable
 from netbox.config import get_config
 from netbox.object_actions import *
 from netbox.ui import actions, layout
