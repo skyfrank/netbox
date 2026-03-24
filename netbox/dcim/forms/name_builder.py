@@ -53,6 +53,10 @@ class NameBuilderForm(forms.Form):
             required=False,
         )
 
+        # Disable browser autocomplete
+        for field in self.fields.values():
+            field.widget.attrs["autocomplete"] = "off"
+
     nb_site = DynamicModelChoiceField(
         label=_("Site"),
         queryset=Site.objects.all(),
