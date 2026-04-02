@@ -7,6 +7,7 @@ from utilities.choices import ChoiceSet
 #
 
 
+
 class SiteStatusChoices(ChoiceSet):
     key = 'Site.status'
 
@@ -906,19 +907,12 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_1GE_BX20_U = '1000base-bx20-u'
     TYPE_1GE_BX40_D = '1000base-bx40-d'
     TYPE_1GE_BX40_U = '1000base-bx40-u'
-    TYPE_1GE_BX20_D = '1000base-bx20-d'
-    TYPE_1GE_BX20_U = '1000base-bx20-u'
-    TYPE_1GE_BX40_D = '1000base-bx40-d'
-    TYPE_1GE_BX40_U = '1000base-bx40-u'
     TYPE_1GE_CWDM = '1000base-cwdm'
     TYPE_1GE_CX = '1000base-cx'
     TYPE_1GE_DWDM = '1000base-dwdm'
     TYPE_1GE_EX = '1000base-ex'
     TYPE_1GE_SX = '1000base-sx'
-    TYPE_1GE_SX = '1000base-sx'
     TYPE_1GE_LSX = '1000base-lsx'
-    TYPE_1GE_LX = '1000base-lx'
-    # TYPE_1GE_LX10 = '1000base-lx10'
     TYPE_1GE_LX = '1000base-lx'
     # TYPE_1GE_LX10 = '1000base-lx10'
     TYPE_1GE_FIXED = '1000base-t'  # TODO: Rename to _T
@@ -942,10 +936,6 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_10GE_SR = '10gbase-sr'
     TYPE_10GE_FIXED = '10gbase-t'
     TYPE_10GE_ZR = '10gbase-zr'
-    TYPE_10GE_BX20_D = '10gbbase-bx20-d'
-    TYPE_10GE_BX20_U = '10gbbase-bx20-u'
-    TYPE_10GE_BX40_D = '10gbbase-bx40-d'
-    TYPE_10GE_BX40_U = '10gbbase-bx40-u'
     TYPE_10GE_BX20_D = '10gbbase-bx20-d'
     TYPE_10GE_BX20_U = '10gbbase-bx20-u'
     TYPE_10GE_BX40_D = '10gbbase-bx40-d'
@@ -1214,17 +1204,11 @@ class InterfaceTypeChoices(ChoiceSet):
                 (TYPE_1GE_BX20_U, '1000BASE-BX20-U (1GE BiDi Up)'),
                 (TYPE_1GE_BX40_D, '1000BASE-BX40-D (1GE BiDi Down)'),
                 (TYPE_1GE_BX40_U, '1000BASE-BX40-U (1GE BiDi Up)'),
-                (TYPE_1GE_BX20_D, '1000BASE-BX20-D (1GE BiDi Down)'),
-                (TYPE_1GE_BX20_U, '1000BASE-BX20-U (1GE BiDi Up)'),
-                (TYPE_1GE_BX40_D, '1000BASE-BX40-D (1GE BiDi Down)'),
-                (TYPE_1GE_BX40_U, '1000BASE-BX40-U (1GE BiDi Up)'),
                 (TYPE_1GE_CWDM, '1000BASE-CWDM (1GE)'),
                 (TYPE_1GE_CX, '1000BASE-CX (1GE DAC)'),
                 (TYPE_1GE_DWDM, '1000BASE-DWDM (1GE)'),
                 (TYPE_1GE_EX, '1000BASE-EX (1GE)'),
                 (TYPE_1GE_LSX, '1000BASE-LSX (1GE)'),
-                (TYPE_1GE_LX, '1000BASE-LX (1GE)'),
-                (TYPE_1GE_SX, '1000BASE-SX (1GE)'),
                 (TYPE_1GE_LX, '1000BASE-LX (1GE)'),
                 (TYPE_1GE_SX, '1000BASE-SX (1GE)'),
                 (TYPE_1GE_FIXED, '1000BASE-T (1GE)'),
@@ -1663,11 +1647,8 @@ class PortTypeChoices(ChoiceSet):
 
     TYPE_RJ45 = 'rj45'
     # TYPE_8P6C = '8p6c'
-    TYPE_RJ45 = 'rj45'
-    # TYPE_8P6C = '8p6c'
     TYPE_8P4C = '8p4c'
     TYPE_8P2C = '8p2c'
-    # TYPE_6P6C = '6p6c'
     # TYPE_6P6C = '6p6c'
     TYPE_6P4C = '6p4c'
     TYPE_6P2C = '6p2c'
@@ -1675,11 +1656,9 @@ class PortTypeChoices(ChoiceSet):
     TYPE_4P2C = '4p2c'
     TYPE_110_PUNCH = '110-punch'
     TYPE_BIX_PUNCH = 'bix-punch'
-    TYPE_BIX_PUNCH = 'bix-punch'
     TYPE_BNC = 'bnc'
     TYPE_F = 'f'
     TYPE_N = 'n'
-    TYPE_RJ21 = 'rj21'
     TYPE_RJ21 = 'rj21'
     TYPE_MRJ21 = 'mrj21'
     TYPE_ST = 'st'
@@ -1697,8 +1676,6 @@ class PortTypeChoices(ChoiceSet):
     TYPE_LC_APC = 'lc-apc'
     TYPE_MPO = 'mpo'
     TYPE_SPLICE = 'splice'
-    TYPE_SPLICE_FUSION = 'splice-fusion'
-    TYPE_SPLICE_MECHANICAL = 'splice-mechanical'
     TYPE_SPLICE_FUSION = 'splice-fusion'
     TYPE_SPLICE_MECHANICAL = 'splice-mechanical'
     TYPE_USB_A = 'usb-a'
@@ -1726,11 +1703,9 @@ class PortTypeChoices(ChoiceSet):
                 (TYPE_4P2C, '4P2C RJ11'),
                 (TYPE_110_PUNCH, '110 Punch'),
                 (TYPE_BIX_PUNCH, 'BIX Punch'),
-                (TYPE_BIX_PUNCH, 'BIX Punch'),
                 (TYPE_BNC, 'BNC'),
                 (TYPE_F, 'F Connector'),
                 (TYPE_N, 'N Connector'),
-                (TYPE_RJ21, 'RJ21 Amphenol'),
                 (TYPE_RJ21, 'RJ21 Amphenol'),
                 (TYPE_MRJ21, 'MRJ21'),
             ),
@@ -1753,8 +1728,6 @@ class PortTypeChoices(ChoiceSet):
                 (TYPE_SC_APC, 'SC/APC'),
                 (TYPE_ST, 'ST'),
                 (TYPE_SPLICE, 'Splice'),
-                (TYPE_SPLICE_FUSION, 'Splice (Fusion)'),
-                (TYPE_SPLICE_MECHANICAL, 'Splice (Mechanical)'),
                 (TYPE_SPLICE_FUSION, 'Splice (Fusion)'),
                 (TYPE_SPLICE_MECHANICAL, 'Splice (Mechanical)'),
             ),

@@ -1236,6 +1236,17 @@ class RackNonRackedView(generic.ObjectChildrenView):
 class RackEditView(generic.ObjectEditView):
     queryset = Rack.objects.all()
     form = forms.RackForm
+    template_name = 'dcim/rack_edit.html'
+
+    def get_extra_context(self, request, instance):
+        # used to send the regex validator to the javascript to help validate the rack name in the name builder form, if configured
+        validators = get_plugin_config('custom_name_validators', 'dcim.rack')
+        name_regex_validator = [v.get('name', {}).get('regex') for v in validators if v.get('name', {}).get('regex')]
+        # must return empty string if no regex validator is configured, this way the default regex value in name builder form will be used
+        return {
+            'name_builder_form': forms.NameBuilderForm(),
+            'name_regex_validator': name_regex_validator[0] if name_regex_validator else '',
+        }
 
     def get_extra_context(self, request, instance):
         # used to send the regex validator to the javascript to help validate the rack name in the name builder form, if configured
@@ -2766,6 +2777,16 @@ class DeviceEditView(generic.ObjectEditView):
     queryset = Device.objects.all()
     form = forms.DeviceForm
     template_name = "dcim/device_edit.html"
+
+    def get_extra_context(self, request, instance):
+        # used to send the regex validator to the javascript to help validate the device name in the name builder form, if configured
+        validators = get_plugin_config('custom_name_validators', 'dcim.device')
+        name_regex_validator = [v.get('name', {}).get('regex') for v in validators if v.get('name', {}).get('regex')]
+        # must return empty string if no regex validator is configured, this way the default regex value in name builder form will be used
+        return {
+            'name_builder_form': forms.NameBuilderForm(),
+            'name_regex_validator': name_regex_validator[0] if name_regex_validator else '',
+        }
 
     def get_extra_context(self, request, instance):
         # used to send the regex validator to the javascript to help validate the device name in the name builder form, if configured

@@ -4,7 +4,6 @@ from .bulk_import import *
 from .connections import *
 from .filtersets import *
 from .formsets import *
-from .name_builder import *
 from .model_forms import *
 from .object_create import *
 from .object_import import *
