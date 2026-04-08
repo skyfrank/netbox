@@ -926,7 +926,6 @@ class InterfaceTypeChoices(ChoiceSet):
     # 10 Gbps Ethernet
     TYPE_10GE_BR_D = '10gbase-br-d'
     TYPE_10GE_BR_U = '10gbase-br-u'
-    TYPE_10GE_CU = '10gbase-cu'
     TYPE_10GE_CX4 = '10gbase-cx4'
     TYPE_10GE_ER = '10gbase-er'
     TYPE_10GE_LR = '10gbase-lr'
@@ -1134,6 +1133,9 @@ class InterfaceTypeChoices(ChoiceSet):
     # Coaxial
     TYPE_DOCSIS = 'docsis'
     TYPE_MOCA = 'moca'
+    TYPE_N = 'coax-n-type'
+    TYPE_F = 'coax-f-type'
+    TYPE_SMA = 'coax-sma'
 
     # PON
     TYPE_BPON = 'bpon'
@@ -1169,6 +1171,9 @@ class InterfaceTypeChoices(ChoiceSet):
 
     # Sonorisation
     
+    # Wired Terminals
+    TYPE_TERMINAL_BLOCK_2 = 'terminal-block-2'
+    TYPE_TERMINAL_BLOCK_3 = 'terminal-block-3'
 
     # Other
     TYPE_OTHER = 'other'
@@ -1486,6 +1491,9 @@ class InterfaceTypeChoices(ChoiceSet):
             (
                 (TYPE_DOCSIS, 'DOCSIS'),
                 (TYPE_MOCA, 'MoCA'),
+                (TYPE_N, 'N-Type'),
+                (TYPE_F, 'F-Type'),
+                (TYPE_SMA, 'SMA'),
             )
         ),
         (
@@ -1527,6 +1535,13 @@ class InterfaceTypeChoices(ChoiceSet):
                 (TYPE_ANALOG, 'Analog'),
                 (TYPE_NUMERIC, 'Numeric'),
                 (TYPE_T1_PRI, 'T1 PRI'),
+            )
+        ),
+        (
+            _('Wired Terminals'),
+            (
+                (TYPE_TERMINAL_BLOCK_2, 'Terminal Block (2 positions)'),
+                (TYPE_TERMINAL_BLOCK_3, 'Terminal Block (3 positions)'),
             )
         ),
         (
@@ -1667,6 +1682,7 @@ class PortTypeChoices(ChoiceSet):
     TYPE_LC_PC = 'lc-pc'
     TYPE_LC_UPC = 'lc-upc'
     TYPE_LC_APC = 'lc-apc'
+    TYPE_E2000_APC = 'e2000-apc'
     TYPE_MPO = 'mpo'
     TYPE_SPLICE = 'splice'
     TYPE_SPLICE_FUSION = 'splice-fusion'
@@ -1685,7 +1701,7 @@ class PortTypeChoices(ChoiceSet):
         (
             _('Copper'),
             (
-                (TYPE_RJ45, 'RJ45'),
+                (TYPE_RJ45, '8P8C RJ45 (standard)'),
                 # (TYPE_8P6C, '8P6C'),
                 (TYPE_8P4C, '8P4C RJ45'),
                 (TYPE_8P2C, '8P2C RJ45'),
@@ -1714,6 +1730,7 @@ class PortTypeChoices(ChoiceSet):
                 (TYPE_LC_PC, 'LC/PC'),
                 (TYPE_LC_UPC, 'LC/UPC'),
                 (TYPE_LC_APC, 'LC/APC'),
+                (TYPE_E2000_APC, 'E2000/APC'),
                 (TYPE_MPO, 'MPO'),
                 (TYPE_SC, 'SC'),
                 (TYPE_SC_PC, 'SC/PC'),
