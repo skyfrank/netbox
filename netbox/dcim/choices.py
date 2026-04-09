@@ -1170,6 +1170,12 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_T1_PRI = 't1-pri'
 
     # Sonorisation
+
+    # Radio
+    TYPE_RADIO_OPTICAL_E2000 = 'radio-optical-e2000'
+    TYPE_RADIO_OPTICAL_SC_UPC = 'radio-optical-sc-upc'
+    TYPE_RADIO_OPTICAL_LC_UPC = 'radio-optical-lc-upc'
+    TYPE_RADIO_OPTICAL_LC_APC = 'radio-optical-lc-apc'
     
     # Wired Terminals
     TYPE_TERMINAL_BLOCK_2 = 'terminal-block-2'
@@ -1535,6 +1541,15 @@ class InterfaceTypeChoices(ChoiceSet):
                 (TYPE_ANALOG, 'Analog'),
                 (TYPE_NUMERIC, 'Numeric'),
                 (TYPE_T1_PRI, 'T1 PRI'),
+            )
+        ),
+        (
+            _('Radio'),
+            (
+                (TYPE_RADIO_OPTICAL_E2000, 'Radio Optical (E2000/APC)'),
+                (TYPE_RADIO_OPTICAL_SC_UPC, 'Radio Optical (SC/UPC)'),
+                (TYPE_RADIO_OPTICAL_LC_UPC, 'Radio Optical (LC/UPC)'),
+                (TYPE_RADIO_OPTICAL_LC_APC, 'Radio Optical (LC/APC)'),
             )
         ),
         (
