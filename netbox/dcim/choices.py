@@ -301,6 +301,10 @@ class ConsolePortTypeChoices(ChoiceSet):
     TYPE_USB_MICRO_A = 'usb-micro-a'
     TYPE_USB_MICRO_B = 'usb-micro-b'
     TYPE_USB_MICRO_AB = 'usb-micro-ab'
+    TYPE_TERMINAL_BLOCK_2 = 'terminal-block-2'
+    TYPE_TERMINAL_BLOCK_3 = 'terminal-block-3'
+    TYPE_TERMINAL_BLOCK_4 = 'terminal-block-4'
+
     TYPE_OTHER = 'other'
 
     CHOICES = (
@@ -321,6 +325,11 @@ class ConsolePortTypeChoices(ChoiceSet):
             (TYPE_USB_MICRO_A, 'USB Micro A'),
             (TYPE_USB_MICRO_B, 'USB Micro B'),
             (TYPE_USB_MICRO_AB, 'USB Micro AB'),
+        )),
+        ('Terminal Block', (
+            (TYPE_TERMINAL_BLOCK_2, 'Terminal Block (2 positions)'),
+            (TYPE_TERMINAL_BLOCK_3, 'Terminal Block (3 positions)'),
+            (TYPE_TERMINAL_BLOCK_4, 'Terminal Block (4 positions)'),
         )),
         ('Other', (
             (TYPE_OTHER, 'Other'),
@@ -1180,6 +1189,7 @@ class InterfaceTypeChoices(ChoiceSet):
     # Wired Terminals
     TYPE_TERMINAL_BLOCK_2 = 'terminal-block-2'
     TYPE_TERMINAL_BLOCK_3 = 'terminal-block-3'
+    TYPE_TERMINAL_BLOCK_4 = 'terminal-block-4'
 
     # Other
     TYPE_OTHER = 'other'
@@ -1557,6 +1567,7 @@ class InterfaceTypeChoices(ChoiceSet):
             (
                 (TYPE_TERMINAL_BLOCK_2, 'Terminal Block (2 positions)'),
                 (TYPE_TERMINAL_BLOCK_3, 'Terminal Block (3 positions)'),
+                (TYPE_TERMINAL_BLOCK_4, 'Terminal Block (4 positions)'),
             )
         ),
         (
