@@ -33,14 +33,15 @@
         </div>
       </div>
       
+      {% render_field form.virtual_machine_type %}
       {% render_field form.role %}
       {% render_field form.status %}
+      {% render_field form.start_on_boot %}
       {% render_field form.description %}
       {% render_field form.serial %}
       {% render_field form.tags %}
     </div>
 
-    {% render_fieldset form fieldset=form.fieldsets.0 %}
     {% render_fieldset form fieldset=form.fieldsets.1 %}
     {% render_fieldset form fieldset=form.fieldsets.2 %}
     {% render_fieldset form fieldset=form.fieldsets.3 %}
