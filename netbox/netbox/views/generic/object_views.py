@@ -263,7 +263,10 @@ class ObjectEditView(GetReturnURLMixin, BaseObjectView):
 
         # If this is an HTMX request, return only the rendered form HTML
         if htmx_partial(request):
-            return render(request, self.htmx_template_name, context)
+            return render(request, self.htmx_template_name, {
+                **context,
+                **self.get_extra_context(request, obj),
+            })
 
         return render(request, self.template_name, {
             **context,
