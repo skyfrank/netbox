@@ -77,4 +77,5 @@ class NameBuilderForm(forms.Form):
     )
     nb_name = forms.CharField(
         label=_("Full Name"),
+        required=False,
     )
