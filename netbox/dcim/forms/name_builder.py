@@ -33,13 +33,19 @@ class NameBuilderForm(forms.Form):
             queryset=system.objects.all(),
             label=_("System"),
             help_text=_("System"),
+            query_params={
+                'ordering': 'systeme'
+                },
             required=False,
         )
         self.fields["nb_subsystem"] = DynamicModelChoiceField(
             queryset=subsystem.objects.all(),
             label=_("Subsystem"),
             help_text=_("Subystem"),
-            query_params={system_name: "$nb_system"},
+            query_params={
+                system_name: "$nb_system",
+                'ordering': 'sous_systeme'
+                },
             required=False,
         )
         self.fields["nb_component"] = DynamicModelChoiceField(
@@ -49,6 +55,7 @@ class NameBuilderForm(forms.Form):
             query_params={
                 system_name: "$nb_system",
                 subsystem_name: "$nb_subsystem",
+                'ordering': 'composant',
             },
             required=False,
         )
