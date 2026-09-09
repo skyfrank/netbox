@@ -105,6 +105,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const targetSiteSelect = document.getElementById('{{ target_site.id_for_label }}');
     const targetLocationSelect = document.getElementById('{{ target_location.id_for_label }}');
     const modal = document.getElementById('custom-name-creation-modal');
+    // Tracks, per select, the last name we already issued a targeted server-side search for
+    // -- so updateSelect() falls back to a search at most once per name instead of looping.
+    const attemptedSearches = new WeakMap();
 
     siteSelect.addEventListener('change', () => updateName(0));
     siteSelect.tomselect.on('load', () => updateSelect(siteSelect, 0));
@@ -214,6 +217,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // on modal open instead of only on focus.
     siteSelect.tomselect.load('');
     systemSelect.tomselect.load('');
+    // If the target site/location selects are already populated (e.g. from URL query
+    // params) but the target name field is still blank, seed its site/location segments
+    // so the modal's own selects prefill to match instead of opening empty.
+    if (!targetNameInput.value) {
+        const siteValue = targetSiteSelect?.tomselect.getValue();
+        const locationValue = targetLocationSelect?.tomselect.getValue();
+        const prefillSite = siteValue ? targetSiteSelect.tomselect.options[siteValue]?.display : '';
+        const prefillLocation = locationValue ? targetLocationSelect.tomselect.options[locationValue]?.display : '';
+        if (prefillSite || prefillLocation) {
+            targetNameInput.value = `${prefillSite ?? ''}-${prefillLocation ?? ''}`;
+        }
+    }
     fullNameInput.value = targetNameInput.value;
     instanceNameInput.value = fullNameInput.value.split('-').length > 5 ? fullNameInput.value.split('-').slice(5).join('-') : '';
 
@@ -281,12 +296,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const option = Object.values(tomselect.options).find((o) => o.display === name);
         if (!option) {
+            // The desired option may not be among the currently loaded options if the API's
+            // result page (capped at maxOptions) doesn't include it -- e.g. it's further down
+            // an alphabetical list. Issue one targeted server-side search for the exact name;
+            // the 'load' listener already registered for this select will re-run this function
+            // once results arrive.
+            if (attemptedSearches.get(tomselect) !== name) {
+                attemptedSearches.set(tomselect, name);
+                tomselect.load(name);
+                return;
+            }
             tomselect.clear();
             applyButton.disabled = true;
             if (descriptionSpan) descriptionSpan.textContent = '';
             return;
         }
 
+        attemptedSearches.delete(tomselect);
         if (descriptionSpan) descriptionSpan.textContent = option.description;
         if (tomselect.getValue() != option.id) {
             tomselect.setValue(option.id);
