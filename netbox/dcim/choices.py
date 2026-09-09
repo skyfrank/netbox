@@ -78,12 +78,14 @@ class RackWidthChoices(ChoiceSet):
     WIDTH_19IN = 19
     WIDTH_21IN = 21
     WIDTH_23IN = 23
+    WIDTH_NA = 0
 
     CHOICES = (
         (WIDTH_10IN, _('{n} inches').format(n=10)),
         (WIDTH_19IN, _('{n} inches').format(n=19)),
         (WIDTH_21IN, _('{n} inches').format(n=21)),
         (WIDTH_23IN, _('{n} inches').format(n=23)),
+        (WIDTH_NA, _('N/A - Autre')),
     )
 
 
