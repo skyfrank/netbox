@@ -193,6 +193,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const option = targetSiteSelect.tomselect.options[targetSiteSelect.tomselect.getValue()];
             siteSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
             siteSelect.tomselect.setValue(targetSiteSelect.tomselect.getValue());
+            // Don't rely solely on the cascading 'change'/'clear' events triggered by
+            // setValue() above -- explicitly rebuild the name so it's guaranteed to reflect
+            // the new site (and any resulting location clear) right away.
+            updateName();
         }
     });
     targetLocationSelect?.addEventListener('change', () => {
@@ -200,11 +204,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const option = targetLocationSelect.tomselect.options[targetLocationSelect.tomselect.getValue()];
             locationSelect.tomselect.addOption({ id: option.id, display: option.display, description: option.description, depth: option.depth}, true);
             locationSelect.tomselect.setValue(targetLocationSelect.tomselect.getValue());
+            updateName();
         }
     });
 
-    siteSelect.tomselect.refreshOptions();
-    systemSelect.tomselect.refreshOptions();
+    // These two fields have no parent dependency, so they never get their options
+    // fetched automatically (unlike location/subsystem/component, which load when
+    // their parent select changes). Trigger an explicit load so they're populated
+    // on modal open instead of only on focus.
+    siteSelect.tomselect.load('');
+    systemSelect.tomselect.load('');
     fullNameInput.value = targetNameInput.value;
     instanceNameInput.value = fullNameInput.value.split('-').length > 5 ? fullNameInput.value.split('-').slice(5).join('-') : '';
 
@@ -222,10 +231,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const componentName = componentSelect.tomselect.options[componentSelect.tomselect.getValue()]?.display ?? currentParts[4] ?? '';
         const instanceName = instanceNameInput.value ?? currentParts.slice(5).join('-') ?? '';
 
+        // Segments are already known values (from selects/instance input), so join them
+        // directly. Do NOT run this through validateFullName()'s dash-reinsertion, which
+        // assumes fixed per-segment character lengths derived from the regex -- display
+        // names that don't match those lengths (e.g. a longer site name) would get
+        // reconstructed into the wrong segments and corrupt the name.
         fullNameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${instanceName}`;
-        
-        // trigger input event to re-validate and update selects based on new full name
-        fullNameInput.dispatchEvent(new Event('input'));
 
         updateAllSelects();
         shouldUpdateName = true;
@@ -233,7 +244,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateAllSelects(clear=false) {
         const parts = fullNameInput.value.split('-');
-        instanceNameInput.value = parts.length > 5 ? parts.slice(5).join('-') : '';
+        const newInstanceName = parts.length > 5 ? parts.slice(5).join('-') : '';
+        if (instanceNameInput.value !== newInstanceName) {
+            instanceNameInput.value = newInstanceName;
+            // Setting .value programmatically doesn't fire any event, so anything outside
+            // this modal watching nb_instance for changes needs an explicit nudge. Use
+            // 'change' rather than 'input' since our own sanitizer above is only bound to
+            // 'input' and would otherwise re-trigger and mangle the value.
+            instanceNameInput.dispatchEvent(new Event('change'));
+        }
         applyButton.disabled = !instanceNameInput.value;
         updateSelect(siteSelect, 0, clear);
         updateSelect(locationSelect, 1, clear);
