@@ -33,6 +33,7 @@ from netbox.ui.panels import (
     TemplatePanel,
 )
 from netbox.views import generic
+from utilities.export import TableExport
 from utilities.forms import ConfirmationForm
 from utilities.paginator import EnhancedPaginator, get_paginate_count
 from utilities.permissions import get_permission_for_model
@@ -221,17 +222,54 @@ class PathTraceView(generic.ObjectView):
         # Get the total length of the cable and whether the length is definitive (fully defined)
         total_length, is_definitive = path.get_total_length() if path else (None, False)
 
-        # Endpoint APIs retain bridged-interface tracing. Passive and cable
-        # traces render the same computed path used for the page's summary.
+        # Endpoint APIs retain bridged-interface tracing. An on-demand trace
+        # must use the selected path, which may not be saved on its origin.
         origin_model = path.origin_type.model_class()
-        if issubclass(origin_model, PathEndpoint):
+        trace_origin = path.origins[0]
+        use_endpoint_trace = (
+            path.pk is not None
+            and issubclass(origin_model, PathEndpoint)
+            and trace_origin.path == path
+        )
+        if use_endpoint_trace:
             api_viewname = f"{path.origin_type.app_label}-api:{path.origin_type.model}-trace"
-            svg_url = f"{reverse(api_viewname, kwargs={'pk': path.origins[0].pk})}?render=svg"
+            svg_url = f"{reverse(api_viewname, kwargs={'pk': trace_origin.pk})}?render=svg"
+            segments = trace_origin.trace()
         else:
-            # Other origins use this view's SVG response, which can render a transient CablePath.
+            # This SVG response also supports transient paths and passive origins.
             query = request.GET.copy()
             query['render'] = 'svg'
             svg_url = f'{request.path}?{query.urlencode()}'
+            segments = path.trace()
+
+        # A segment may end where the next one begins. Keep each termination
+        # once, while retaining every cable in the order it is traversed.
+        trace_objects = []
+        for near_ends, links, far_ends in segments:
+            for node in (*near_ends, *links, *far_ends):
+                if not trace_objects or node != trace_objects[-1]:
+                    trace_objects.append(node)
+
+        custom_field_names = settings.PLUGINS_CONFIG.get('custom_field_names', {})
+        cable_type_field = custom_field_names.get('cable_type', 'cable_type_stm')
+        position_name_field = custom_field_names.get('position_name', 'position_name')
+        trace_rows = []
+        for node in trace_objects:
+            if isinstance(node, Cable):
+                type_value = node.cf.get(cable_type_field, '')
+                length = f'{node.length} {node.length_unit}' if node.length is not None else ''
+                nom_position = ''
+            else:
+                type_value = node.get_type_display() if hasattr(node, 'get_type_display') else ''
+                length = ''
+                nom_position = getattr(node, 'cf', {}).get(position_name_field, '')
+
+            trace_rows.append({
+                'object': node,
+                'type': type_value,
+                'length': length,
+                'nom_position': nom_position,
+            })
 
         for related_path in related_paths:
             related_path.trace_destinations = related_path.destinations or [
@@ -246,9 +284,15 @@ class PathTraceView(generic.ObjectView):
             'total_length': total_length,
             'is_definitive': is_definitive,
             'svg_url': svg_url,
+            'trace_table': tables.CableTraceTable(trace_rows),
         }
 
     def get(self, request, **kwargs):
+        if request.GET.get('export') is not None:
+            instance = self.get_object(**kwargs)
+            context = self.get_extra_context(request, instance)
+            table = context.get('trace_table', tables.CableTraceTable([]))
+            return TableExport(TableExport.XLSX, table).response(filename='netbox_trace.xlsx')
         if request.GET.get('render') != 'svg':
             return super().get(request, **kwargs)
         instance = self.get_object(**kwargs)
