@@ -32,6 +32,7 @@ from netbox.ui.panels import (
     TemplatePanel,
 )
 from netbox.views import generic
+from utilities.export import TableExport
 from utilities.forms import ConfirmationForm
 from utilities.paginator import EnhancedPaginator, get_paginate_count
 from utilities.permissions import get_permission_for_model
@@ -180,6 +181,14 @@ class PathTraceView(generic.ObjectView):
 
         return super().dispatch(request, *args, **kwargs)
 
+    def get(self, request, **kwargs):
+        if request.GET.get('export') is not None:
+            instance = self.get_object(**kwargs)
+            context = self.get_extra_context(request, instance)
+            table = context.get('trace_table', tables.CableTraceTable([]))
+            return TableExport(TableExport.XLSX, table).response(filename='netbox_trace.xlsx')
+        return super().get(request, **kwargs)
+
     def get_extra_context(self, request, instance):
         related_paths = []
 
@@ -214,10 +223,68 @@ class PathTraceView(generic.ObjectView):
         # CircuitTermination have no such action, so omit the SVG for them.
         origin_model = path.origin_type.model_class()
         if issubclass(origin_model, PathEndpoint):
+            trace_origin = path.origins[0]
             api_viewname = f"{path.origin_type.app_label}-api:{path.origin_type.model}-trace"
-            svg_url = f"{reverse(api_viewname, kwargs={'pk': path.origins[0].pk})}?render=svg"
+            svg_url = f"{reverse(api_viewname, kwargs={'pk': trace_origin.pk})}?render=svg"
+
+            trace_objects = []
+            parent_objects = []
+            for index, (near_ends, links, far_ends) in enumerate(trace_origin.trace()):
+                if index == 0:
+                    parent_objects = sorted({end.parent_object for end in near_ends}, key=str)
+                    trace_objects.extend(parent_objects)
+                for parent in parent_objects:
+                    trace_objects.extend(end for end in near_ends if end.parent_object == parent)
+
+                if links and far_ends:
+                    trace_objects.extend(links)
+                    parent_objects = sorted({end.parent_object for end in far_ends}, key=str)
+                    for parent in parent_objects:
+                        trace_objects.extend(end for end in far_ends if end.parent_object == parent)
+                    trace_objects.extend(parent_objects)
+                elif far_ends:
+                    parent_objects = list(far_ends)
+                    trace_objects.extend(parent_objects)
+
+            # Parent objects are included in trace_objects for display purposes. They are
+            # folded into their endpoint row so that each equipment/interface occupies one line.
+            parent_ids = set()
+            for node in trace_objects:
+                try:
+                    parent = node.parent_object
+                except (AttributeError, NotImplementedError):
+                    parent = None
+                if parent and parent != node:
+                    parent_ids.add(id(parent))
+
+            trace_rows = []
+            custom_field_names = settings.PLUGINS_CONFIG.get('custom_field_names', {})
+            cable_type_field = custom_field_names.get('cable_type', 'cable_type_stm')
+            position_name_field = custom_field_names.get('position_name', 'position_name')
+            for node in trace_objects:
+                if id(node) in parent_ids:
+                    continue
+
+                if isinstance(node, Cable):
+                    # data_validation_and_upkeep defines this as cable_type_stm by default.
+                    type_value = node.cf.get(cable_type_field, '')
+                    length = f'{node.length} {node.length_unit}' if node.length is not None else ''
+                    nom_position = ''
+                else:
+                    type_value = node.get_type_display() if hasattr(node, 'get_type_display') else ''
+                    length = ''
+                    # The plugin stores the generated position name on the termination.
+                    nom_position = getattr(node, 'cf', {}).get(position_name_field, '')
+
+                trace_rows.append({
+                    'object': node,
+                    'type': type_value,
+                    'length': length,
+                    'nom_position': nom_position,
+                })
         else:
             svg_url = None
+            trace_rows = []
 
         return {
             'path': path,
@@ -225,6 +292,7 @@ class PathTraceView(generic.ObjectView):
             'total_length': total_length,
             'is_definitive': is_definitive,
             'svg_url': svg_url,
+            'trace_table': tables.CableTraceTable(trace_rows),
         }
 
 

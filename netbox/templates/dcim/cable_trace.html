@@ -118,6 +118,23 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if path %}
+                <div class="card mt-3">
+                    <h2 class="card-header">
+                        {% trans "Trace Objects" %}
+                        <div class="card-actions">
+                            <a href="?cablepath_id={{ path.pk }}&export=true" class="btn btn-outline-primary">
+                                <i class="mdi mdi-download" aria-hidden="true"></i>
+                                {% trans "Export" %}
+                            </a>
+                        </div>
+                    </h2>
+                    <div class="table table-hover attr-table">
+                        {% include 'inc/table.html' with table=trace_table %}
+                    </div>
+                </div>
+            {% endif %}
         </div>
 
     </div>

@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django_tables2.utils import Accessor
 
 from dcim.models import Cable, CableBundle
-from netbox.tables import PrimaryModelTable, columns
+from netbox.tables import BaseTable, PrimaryModelTable, columns
 from tenancy.tables import TenancyColumnsMixin
 
 from .template_code import CABLE_LENGTH
@@ -13,7 +13,44 @@ from .template_code import CABLE_LENGTH
 __all__ = (
     'CableBundleTable',
     'CableTable',
+    'CableTraceTable',
 )
+
+
+class CableTraceTable(BaseTable):
+    """Heterogeneous path nodes in physical trace order, including cables."""
+
+    class TraceObjectColumn(tables.Column):
+        def render(self, value):
+            try:
+                parent = value.parent_object
+            except (AttributeError, NotImplementedError):
+                parent = None
+
+            if parent and parent != value:
+                return mark_safe(
+                    f'<a href="{parent.get_absolute_url()}">{escape(parent)}</a>'
+                    f' <i class="mdi mdi-chevron-right"></i> '
+                    f'<a href="{value.get_absolute_url()}">{escape(value)}</a>'
+                )
+
+            return mark_safe(f'<a href="{value.get_absolute_url()}">{escape(value)}</a>')
+
+        def value(self, value):
+            try:
+                parent = value.parent_object
+            except (AttributeError, NotImplementedError):
+                parent = None
+            return f'{parent} > {value}' if parent and parent != value else str(value)
+
+    object = TraceObjectColumn(verbose_name=_('Object'))
+    type = tables.Column(verbose_name=_('Type'))
+    length = tables.Column(verbose_name=_('Length'))
+    nom_position = tables.Column(verbose_name=_('Position name'))
+
+    class Meta(BaseTable.Meta):
+        orderable = False
+        empty_text = _('No trace objects found')
 
 
 class CableTerminationsColumn(tables.Column):
