@@ -899,7 +899,6 @@ class InterfaceTypeChoices(ChoiceSet):
     TYPE_100ME_FX = '100base-fx'
     TYPE_100ME_LFX = '100base-lfx'
     TYPE_100ME_FIXED = '100base-tx'  # TODO: Rename to _TX
-    TYPE_100ME_T1 = '100base-t1'
 
     # GigabitEthernet
     TYPE_1GE_BX10_D = '1000base-bx10-d'
@@ -1193,7 +1192,6 @@ class InterfaceTypeChoices(ChoiceSet):
                 (TYPE_100ME_FX, '100BASE-FX (10/100ME)'),
                 (TYPE_100ME_LFX, '100BASE-LFX (10/100ME)'),
                 (TYPE_100ME_FIXED, '100BASE-TX (10/100ME)'),
-                (TYPE_100ME_T1, '100BASE-T1 (10/100ME)'),
             ),
         ),
         (
