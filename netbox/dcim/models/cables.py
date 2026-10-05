@@ -228,6 +228,11 @@ class Cable(PrimaryModel):
             ct.termination for ct in self.terminations.all() if ct.cable_end == side
         ]
 
+    def trace(self):
+        """Trace both directions from this cable, including unconnected pass-through ports."""
+        path = CablePath.from_trace(self)
+        return path.trace() if path else []
+
     def _set_x_terminations(self, side, value):
         """
         Set the terminating objects for the given cable end (A or B).
@@ -845,8 +850,113 @@ class CablePath(models.Model):
     def segment_count(self):
         return int(len(self.path) / 3)
 
+    def trace(self):
+        """Return drawable segments, retaining the final unconnected port."""
+        nodes = list(self.path_objects)
+        if len(nodes) % 3 == 1:
+            nodes.extend(([], []))
+        elif len(nodes) % 3 == 2:
+            # A circuit may end at a site or provider network rather than a cable.
+            nodes.insert(-1, [])
+        return list(zip(*[iter(nodes)] * 3))
+
     @classmethod
-    def from_origin(cls, terminations):
+    def _trace_direction(cls, terminations, *, through_mapping=False):
+        """Walk away from a starting point, either along its cable or through its port mappings."""
+        start = [[object_to_path_node(t) for t in terminations]]
+        prefix = []
+        positions = None
+        if through_mapping:
+            if not all(isinstance(t, (FrontPort, RearPort)) for t in terminations):
+                return cls(path=start, is_complete=True, is_active=True)
+            side = 'front_port' if isinstance(terminations[0], FrontPort) else 'rear_port'
+            peer = 'rear_port' if side == 'front_port' else 'front_port'
+            query = Q()
+            for term in terminations:
+                term_query = Q(**{side: term})
+                if term.positions > 1 and term.cable_positions:
+                    term_query &= Q(**{f'{side}_position__in': term.cable_positions})
+                elif term.positions > 1:
+                    # No fiber was selected. Expose the branches instead of
+                    # silently picking one or joining unrelated circuits.
+                    return cls(path=start, is_split=True, is_active=True)
+                query |= term_query
+            mappings = list(PortMapping.objects.filter(query).select_related(peer))
+            if not mappings:
+                return cls(path=start, is_active=True)
+            terminations = list(dict.fromkeys(getattr(mapping, peer) for mapping in mappings))
+            positions = [getattr(mapping, f'{peer}_position') for mapping in mappings]
+            if len({t.link for t in terminations}) > 1:
+                return cls(path=start, is_split=True, is_active=True)
+            # A mapping is internal to a device, not an extra cable segment.
+            prefix = start + [[], []]
+
+        path = cls.from_origin(terminations, initial_positions=positions)
+        if path is None:
+            path = cls(path=[[object_to_path_node(t) for t in terminations]], is_active=True)
+        path.path = prefix + path.path
+        return path
+
+    @classmethod
+    def from_trace(cls, origin):
+        """
+        Compute an unsaved, bidirectional display path from a cable or pass-through port.
+
+        Trace away from the starting termination on each side, reverse the
+        mapping-side segments, then join them to the cable-side segments. This
+        includes both free front ports even when starting in the middle of the
+        cable plant. Cached endpoint paths and their connectivity semantics are
+        unchanged; this method never saves a CablePath.
+        """
+        if not origin.pk:
+            return None
+        # Cable edits update denormalized termination fields in the database.
+        # Do not follow stale cable assignments on the caller's model instance.
+        origin = type(origin).objects.get(pk=origin.pk)
+        if isinstance(origin, Cable):
+            terminations = origin.a_terminations or origin.b_terminations
+        else:
+            terminations = [origin]
+        if not terminations:
+            return None
+
+        cable_side = cls._trace_direction(terminations)
+        mapping_side = cls._trace_direction(terminations, through_mapping=True)
+        if all(t.link is None for t in terminations):
+            segments = mapping_side.trace()
+        else:
+            # Empty-link terminal segments carry a real port. Keep that port on
+            # the near side when reversing, so the SVG has no phantom endpoint.
+            segments = [
+                (far, links, near) if far else (near, links, far)
+                for near, links, far in reversed(mapping_side.trace())
+            ]
+            # Both walks contain the starting termination. The mapping walk's
+            # final standalone copy is replaced by the first cable segment.
+            segments = segments[:-1] + cable_side.trace()
+
+        if not any(links for _, links, _ in segments) and not (mapping_side.is_split or cable_side.is_split):
+            return None
+        path = cls(
+            path=[[object_to_path_node(node) for node in step] for segment in segments for step in segment],
+            is_active=cable_side.is_active and mapping_side.is_active,
+            is_complete=cable_side.is_complete and mapping_side.is_complete,
+            is_split=cable_side.is_split or mapping_side.is_split,
+        )
+        path._nodes = [node for step in path.path for node in step]
+        # Either end can split. Preserve both sets of choices, independently of
+        # their position in the combined drawing.
+        path._trace_split_nodes = list(dict.fromkeys(
+            node for side in (mapping_side, cable_side) if side.is_split for node in side.get_split_nodes()
+        ))
+        path._trace_asymmetric_nodes = list(dict.fromkeys(
+            node for side in (mapping_side, cable_side) if side.is_split
+            for node in side.get_asymmetric_nodes() if node not in terminations
+        ))
+        return path
+
+    @classmethod
+    def from_origin(cls, terminations, *, initial_positions=None):
         """
         Create a new CablePath instance as traced from the given termination objects. These can be any object to which a
         Cable or WirelessLink connects (interfaces, console ports, circuit termination, etc.). All terminations must be
@@ -862,7 +972,9 @@ class CablePath(models.Model):
             raise UnsupportedCablePath(_("All originating terminations must be attached to the same link"))
 
         path = []
-        position_stack = []
+        # An on-demand trace starting inside a pass-through port already knows
+        # which positions of the first cable to follow.
+        position_stack = [list(initial_positions)] if initial_positions else []
         is_complete = False
         is_active = True
         is_split = False
@@ -870,7 +982,15 @@ class CablePath(models.Model):
         logger.debug(f'Tracing cable path from {terminations}...')
 
         segment = 0
+        visited = set()
         while terminations:
+            state = (
+                tuple(object_to_path_node(t) for t in terminations),
+                tuple(tuple(positions) for positions in position_stack),
+            )
+            if state in visited:
+                raise UnsupportedCablePath(_("A loop was detected in the cable trace."))
+            visited.add(state)
             segment += 1
             logger.debug(f'[Path segment #{segment}] Position stack: {position_stack}')
             logger.debug(f'[Path segment #{segment}] Local terminations: {terminations}')
@@ -1241,6 +1361,8 @@ class CablePath(models.Model):
         """
         Return all available next segments in a split cable path.
         """
+        if hasattr(self, '_trace_split_nodes'):
+            return self._trace_split_nodes
         from circuits.models import CircuitTermination
         nodes = self.path_objects[-1]
 
@@ -1268,10 +1390,12 @@ class CablePath(models.Model):
         """
         Return all available next segments in a split cable path.
         """
+        if hasattr(self, '_trace_asymmetric_nodes'):
+            return self._trace_asymmetric_nodes
         from circuits.models import CircuitTermination
         asymmetric_nodes = []
         for nodes in self.path_objects:
-            if type(nodes[0]) in [RearPort, FrontPort, CircuitTermination]:
+            if nodes and type(nodes[0]) in [RearPort, FrontPort, CircuitTermination]:
                 asymmetric_nodes.extend([node for node in nodes if node.link is None])
 
         return asymmetric_nodes

@@ -71,6 +71,11 @@
   {% else %}
     <div class="card-body text-muted">
       {% trans "Not Connected" %}
+      {% if object|meta:"model_name" == 'frontport' or object|meta:"model_name" == 'rearport' %}
+        <a href="{% url trace_url_name pk=object.pk %}" class="btn btn-sm btn-primary" title="{% trans "Trace" %}">
+          <i class="mdi mdi-transit-connection-variant" aria-hidden="true"></i>
+        </a>
+      {% endif %}
       {% if perms.dcim.add_cable %}
         {% if connect_options|length > 1 %}
           <div class="dropdown float-end">
