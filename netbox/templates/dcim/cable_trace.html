@@ -28,11 +28,11 @@
             </div>
             {% endif %}
             <div class="trace-end">
-                {% if path.is_split and path.get_asymmetric_nodes %}
+                {% if path.is_split and asymmetric_nodes %}
                     <h3 class="text-danger">{% trans "Asymmetric Path" %}!</h3>
                     <p>{% trans "The nodes below have no links and result in an asymmetric path" %}:</p>
                     <ul class="text-start">
-                      {% for next_node in path.get_asymmetric_nodes %}
+                      {% for next_node in asymmetric_nodes %}
                         <li class="text-muted">{{ next_node|linkify }}</li>
                       {% endfor %}
                     </ul>
@@ -41,11 +41,11 @@
                     <p>{% trans "Select a node below to continue" %}:</p>
                     <ul class="text-start">
                       {% for next_node in path.get_split_nodes %}
-                        {% if next_node.cable %}
+                        {% if next_node.cable or next_node|meta:"model_name" == 'frontport' or next_node|meta:"model_name" == 'rearport' %}
                           {% with viewname=next_node|viewname:"trace" %}
                             <li>
                               <a href="{% url viewname pk=next_node.pk %}">{{ next_node|meta:"verbose_name"|bettertitle }} {{ next_node }}</a>
-                              ({% trans "Cable" %} {{ next_node.cable|linkify }})
+                              {% if next_node.cable %}({% trans "Cable" %} {{ next_node.cable|linkify }}){% endif %}
                             </li>
                           {% endwith %}
                         {% else %}
@@ -58,7 +58,7 @@
                     <table class="table">
                         <tr>
                         <th scope="row">{% trans "Total segments" %}</th>
-                        <td>{{ path.segment_count }}</td>
+                        <td>{{ segment_count }}</td>
                         </tr>
                         <tr>
                         <th scope="row">{% trans "Total length" %}</th>
@@ -74,6 +74,8 @@
                     </table>
                 {% endif %}
             </div>
+          {% elif trace_error %}
+            <div class="alert alert-warning">{{ trace_error }}</div>
           {% else %}
             <h3 class="text-center text-muted my-3">
               {% trans "No paths found" %}
@@ -100,10 +102,10 @@
                                     <a href="?cablepath_id={{ cablepath.pk }}">{{ cablepath.origins|join:", " }}</a>
                                 </td>
                                 <td>
-                                    {% if cablepath.destinations %}
-                                        {{ cablepath.destinations|join:", " }}
+                                    {% if cablepath.trace_destinations %}
+                                        {{ cablepath.trace_destinations|join:", " }}
                                     {% else %}
-                                        <span class="text-muted">{% trans "Incomplete" %}</span>
+                                        <span class="text-muted">{{ ''|placeholder }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
