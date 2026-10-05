@@ -5,6 +5,7 @@ from netbox.object_actions import ObjectAction
 __all__ = (
     'BulkAddComponents',
     'BulkDisconnect',
+    'TraceCable',
 )
 
 
@@ -33,3 +34,11 @@ class BulkDisconnect(ObjectAction):
     multi = True
     permissions_required = {'change'}
     template_name = 'dcim/buttons/bulk_disconnect.html'
+
+
+class TraceCable(ObjectAction):
+    name = 'trace'
+    label = _('Trace')
+    permissions_required = {'view'}
+    url_kwargs = ['pk']
+    template_name = 'dcim/buttons/trace.html'

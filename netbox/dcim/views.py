@@ -5,6 +5,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger
 from django.db import router, transaction
 from django.db.models import Func, IntegerField, Prefetch
 from django.forms import ModelMultipleChoiceField, MultipleHiddenInput, modelformset_factory
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import escape
@@ -53,9 +54,12 @@ from wireless.models import WirelessLAN
 
 from . import filtersets, forms, tables
 from .choices import DeviceFaceChoices, InterfaceModeChoices
+from .constants import CABLE_TRACE_SVG_DEFAULT_WIDTH
+from .exceptions import UnsupportedCablePath
 from .models import *
 from .models.device_components import PortMapping
-from .object_actions import BulkAddComponents, BulkDisconnect
+from .object_actions import BulkAddComponents, BulkDisconnect, TraceCable
+from .svg import CableTraceSVG
 from .ui import panels
 
 CABLE_TERMINATION_TYPES = {
@@ -185,7 +189,7 @@ class PathTraceView(generic.ObjectView):
 
         # If tracing a PathEndpoint, locate the CablePath (if one exists) by its origin
         if isinstance(instance, PathEndpoint):
-            path = instance._path
+            path = instance.path
 
         # Otherwise, find all CablePaths which traverse the specified object
         else:
@@ -193,12 +197,20 @@ class PathTraceView(generic.ObjectView):
             # Check for specification of a particular path (when tracing pass-through ports)
             try:
                 path_id = int(request.GET.get('cablepath_id'))
-            except TypeError:
+            except (TypeError, ValueError):
                 path_id = None
             if path_id in list(related_paths.values_list('pk', flat=True)):
                 path = CablePath.objects.get(pk=path_id)
             else:
                 path = related_paths.first()
+
+            # The model trace algorithm walks both sides of an interior cable
+            # termination. The view only selects and renders its result.
+            if path is None and isinstance(instance, (Cable, FrontPort, RearPort)):
+                try:
+                    path = CablePath.from_trace(instance)
+                except UnsupportedCablePath as error:
+                    return {'path': None, 'trace_error': str(error)}
 
         # No paths found
         if path is None:
@@ -209,23 +221,48 @@ class PathTraceView(generic.ObjectView):
         # Get the total length of the cable and whether the length is definitive (fully defined)
         total_length, is_definitive = path.get_total_length() if path else (None, False)
 
-        # Determine the path to the SVG trace image. The `-trace` API action (and the SVG renderer,
-        # which calls origin.trace()) exist only for PathEndpoint origins. Other valid origins such as
-        # CircuitTermination have no such action, so omit the SVG for them.
+        # Endpoint APIs retain bridged-interface tracing. Passive and cable
+        # traces render the same computed path used for the page's summary.
         origin_model = path.origin_type.model_class()
         if issubclass(origin_model, PathEndpoint):
             api_viewname = f"{path.origin_type.app_label}-api:{path.origin_type.model}-trace"
             svg_url = f"{reverse(api_viewname, kwargs={'pk': path.origins[0].pk})}?render=svg"
         else:
-            svg_url = None
+            # Other origins use this view's SVG response, which can render a transient CablePath.
+            query = request.GET.copy()
+            query['render'] = 'svg'
+            svg_url = f'{request.path}?{query.urlencode()}'
+
+        for related_path in related_paths:
+            related_path.trace_destinations = related_path.destinations or [
+                node for node in related_path.path_objects[-1] if isinstance(node, (FrontPort, RearPort))
+            ]
 
         return {
             'path': path,
+            'asymmetric_nodes': path.get_asymmetric_nodes() if path.is_split else [],
+            'segment_count': sum(bool(links) for _, links, _ in path.trace()),
             'related_paths': related_paths,
             'total_length': total_length,
             'is_definitive': is_definitive,
             'svg_url': svg_url,
         }
+
+    def get(self, request, **kwargs):
+        if request.GET.get('render') != 'svg':
+            return super().get(request, **kwargs)
+        instance = self.get_object(**kwargs)
+        path = self.get_extra_context(request, instance)['path']
+        if path is None:
+            raise Http404
+        try:
+            width = int(request.GET.get('width', CABLE_TRACE_SVG_DEFAULT_WIDTH))
+        except (TypeError, ValueError):
+            width = CABLE_TRACE_SVG_DEFAULT_WIDTH
+        # Use the selected path, including paths without a PathEndpoint origin.
+        origin = path.origins[0]
+        drawing = CableTraceSVG(origin, width=width, base_url=request.build_absolute_uri('/'), path=path)
+        return HttpResponse(drawing.render().tostring(), content_type='image/svg+xml')
 
 
 #
@@ -4356,6 +4393,7 @@ class CableListView(generic.ObjectListView):
 
 @register_model_view(Cable)
 class CableView(generic.ObjectView):
+    actions = (TraceCable, CloneObject, EditObject, DeleteObject)
     queryset = Cable.objects.all()
     template_name = 'generic/object.html'
     layout = layout.SimpleLayout(
@@ -4377,6 +4415,8 @@ class CableView(generic.ObjectView):
         ],
     )
 
+
+register_model_view(Cable, 'trace', kwargs={'model': Cable})(PathTraceView)
 
 @register_model_view(Cable, 'add', detail=False)
 @register_model_view(Cable, 'edit')
