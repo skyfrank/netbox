@@ -118,12 +118,12 @@ class ObjectListView(BaseMultiObjectView, ActionsMixin, TableMixin):
             )
 
         exporter = TableExport(
-            export_format=TableExport.CSV,
+            export_format=TableExport.XLSX,
             table=table,
             exclude_columns=exclude_columns,
             delimiter=delimiter,
         )
-        return exporter.response(filename=filename)
+        return exporter.response(filename=filename.replace('.csv', '.xlsx'))
 
     def export_template(self, template, request):
         """
