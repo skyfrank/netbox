@@ -10,6 +10,7 @@ from mptt.models import MPTTModel, TreeForeignKey
 
 from dcim.choices import *
 from dcim.constants import *
+from dcim.exceptions import UnsupportedCablePath
 from dcim.fields import WWNField
 from dcim.models.base import PortMappingBase
 from dcim.models.mixins import InterfaceValidationMixin
@@ -319,6 +320,16 @@ class CabledObjectModel(models.Model):
         self.cable_positions = None
     clear_cable_termination.alters_data = True
 
+    def trace(self):
+        """Trace the physical path on both sides of a pass-through termination."""
+        # CabledObjectModel precedes PathEndpoint in the concrete models' MRO.
+        # Keep endpoint tracing (including bridges) on its established path.
+        if isinstance(self, PathEndpoint):
+            return PathEndpoint.trace(self)
+        from .cables import CablePath
+        path = CablePath.from_trace(self)
+        return path.trace() if path else []
+
 
 class PathEndpoint(models.Model):
     """
@@ -345,9 +356,13 @@ class PathEndpoint(models.Model):
     def trace(self):
         origin = self
         path = []
+        visited = set()
 
         # Construct the complete path (including e.g. bridged interfaces)
         while origin is not None:
+            if origin in visited:
+                raise UnsupportedCablePath(_("A loop was detected in the cable trace."))
+            visited.add(origin)
             # Go through the public accessor rather than dereferencing `_path`
             # directly. During cable edits, CablePath rows can be deleted and
             # recreated while this endpoint instance is still in memory.
@@ -355,14 +370,7 @@ class PathEndpoint(models.Model):
             if cable_path is None:
                 break
 
-            path.extend(cable_path.path_objects)
-
-            # If the path ends at a non-connected pass-through port, pad out the link and far-end terminations
-            if len(path) % 3 == 1:
-                path.extend(([], []))
-            # If the path ends at a site or provider network, inject a null "link" to render an attachment
-            elif len(path) % 3 == 2:
-                path.insert(-1, [])
+            path.extend(cable_path.trace())
 
             # Check for a bridged relationship to continue the trace.
             destinations = cable_path.destinations
@@ -372,7 +380,7 @@ class PathEndpoint(models.Model):
                 origin = None
 
         # Return the path as a list of three-tuples (A termination(s), cable(s), B termination(s))
-        return list(zip(*[iter(path)] * 3))
+        return path
 
     @property
     def path(self):

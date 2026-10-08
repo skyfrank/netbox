@@ -455,8 +455,8 @@ FRONTPORT_BUTTONS = """
     <i class="mdi mdi-plus-thick" aria-hidden="true"></i>
   </a>
 {% endif %}
+<a href="{% url 'dcim:frontport_trace' pk=record.pk %}" class="btn btn-primary btn-sm" title="Trace"><i class="mdi mdi-transit-connection-variant"></i></a>
 {% if record.cable %}
-    <a href="{% url 'dcim:frontport_trace' pk=record.pk %}" class="btn btn-primary btn-sm" title="Trace"><i class="mdi mdi-transit-connection-variant"></i></a>
     {% include 'dcim/inc/cable_toggle_buttons.html' with cable=record.cable %}
     {% if perms.dcim.change_cable or perms.dcim.delete_cable %}
         <span class="dropdown">
@@ -482,7 +482,6 @@ FRONTPORT_BUTTONS = """
         </span>
     {% endif %}
 {% elif perms.dcim.add_cable %}
-    <a href="#" class="btn btn-outline-secondary btn-sm disabled"><i class="mdi mdi-transit-connection-variant" aria-hidden="true"></i></a>
     <a href="#" class="btn btn-outline-secondary btn-sm disabled"><i class="mdi mdi-lan-connect" aria-hidden="true"></i></a>
     {% if not record.mark_connected %}
         <span class="dropdown">
@@ -510,8 +509,8 @@ REARPORT_BUTTONS = """
     <i class="mdi mdi-plus-thick" aria-hidden="true"></i>
   </a>
 {% endif %}
+<a href="{% url 'dcim:rearport_trace' pk=record.pk %}" class="btn btn-primary btn-sm" title="Trace"><i class="mdi mdi-transit-connection-variant"></i></a>
 {% if record.cable %}
-    <a href="{% url 'dcim:rearport_trace' pk=record.pk %}" class="btn btn-primary btn-sm" title="Trace"><i class="mdi mdi-transit-connection-variant"></i></a>
     {% include 'dcim/inc/cable_toggle_buttons.html' with cable=record.cable %}
     {% if perms.dcim.change_cable or perms.dcim.delete_cable %}
         <span class="dropdown">
@@ -537,7 +536,6 @@ REARPORT_BUTTONS = """
         </span>
     {% endif %}
 {% elif perms.dcim.add_cable %}
-    <a href="#" class="btn btn-outline-secondary btn-sm disabled"><i class="mdi mdi-transit-connection-variant" aria-hidden="true"></i></a>
     <a href="#" class="btn btn-outline-secondary btn-sm disabled"><i class="mdi mdi-lan-connect" aria-hidden="true"></i></a>
     {% if not record.mark_connected %}
         <span class="dropdown">
