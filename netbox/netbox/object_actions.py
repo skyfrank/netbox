@@ -153,7 +153,7 @@ class BulkExport(ObjectAction):
         user = context['request'].user
 
         # Determine if the "all data" export returns CSV or YAML
-        data_format = 'YAML' if hasattr(object_type.model_class(), 'to_yaml') else 'CSV'
+        data_format = 'YAML' if hasattr(object_type.model_class(), 'to_yaml') else 'XLSX'
 
         # Retrieve all export templates for this model
         export_templates = ExportTemplate.objects.restrict(user, 'view').filter(object_types=object_type)

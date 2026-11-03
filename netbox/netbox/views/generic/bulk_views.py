@@ -138,7 +138,7 @@ class ObjectListView(BaseMultiObjectView, ActionsMixin, TableMixin):
         # those currently visible in the configured table view.
         table._apply_prefetching(columns=[c for c in all_columns if c not in exclude_columns])
 
-        filename = filename or f'netbox_{self.queryset.model._meta.verbose_name_plural}.csv'
+        filename = filename or f'netbox_{self.queryset.model._meta.verbose_name_plural}.xlsx'
 
         if settings.STREAMING_EXPORTS:
             return stream_table_csv_response(
@@ -149,7 +149,7 @@ class ObjectListView(BaseMultiObjectView, ActionsMixin, TableMixin):
             )
 
         exporter = TableExport(
-            export_format=TableExport.CSV,
+            export_format=TableExport.XLSX,
             table=table,
             exclude_columns=exclude_columns,
             delimiter=delimiter,
