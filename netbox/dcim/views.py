@@ -5,6 +5,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger
 from django.db import router, transaction
 from django.db.models import Func, IntegerField, Prefetch
 from django.forms import ModelMultipleChoiceField, MultipleHiddenInput, modelformset_factory
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import escape
@@ -32,6 +33,7 @@ from netbox.ui.panels import (
     TemplatePanel,
 )
 from netbox.views import generic
+from utilities.export import TableExport
 from utilities.forms import ConfirmationForm
 from utilities.paginator import EnhancedPaginator, get_paginate_count
 from utilities.permissions import get_permission_for_model
@@ -53,9 +55,12 @@ from wireless.models import WirelessLAN
 
 from . import filtersets, forms, tables
 from .choices import DeviceFaceChoices, InterfaceModeChoices
+from .constants import CABLE_TRACE_SVG_DEFAULT_WIDTH
+from .exceptions import UnsupportedCablePath
 from .models import *
 from .models.device_components import PortMapping
-from .object_actions import BulkAddComponents, BulkDisconnect
+from .object_actions import BulkAddComponents, BulkDisconnect, TraceCable
+from .svg import CableTraceSVG
 from .ui import panels
 
 CABLE_TERMINATION_TYPES = {
@@ -185,7 +190,7 @@ class PathTraceView(generic.ObjectView):
 
         # If tracing a PathEndpoint, locate the CablePath (if one exists) by its origin
         if isinstance(instance, PathEndpoint):
-            path = instance._path
+            path = instance.path
 
         # Otherwise, find all CablePaths which traverse the specified object
         else:
@@ -193,12 +198,20 @@ class PathTraceView(generic.ObjectView):
             # Check for specification of a particular path (when tracing pass-through ports)
             try:
                 path_id = int(request.GET.get('cablepath_id'))
-            except TypeError:
+            except (TypeError, ValueError):
                 path_id = None
             if path_id in list(related_paths.values_list('pk', flat=True)):
                 path = CablePath.objects.get(pk=path_id)
             else:
                 path = related_paths.first()
+
+            # The model trace algorithm walks both sides of an interior cable
+            # termination. The view only selects and renders its result.
+            if path is None and isinstance(instance, (Cable, FrontPort, RearPort)):
+                try:
+                    path = CablePath.from_trace(instance)
+                except UnsupportedCablePath as error:
+                    return {'path': None, 'trace_error': str(error)}
 
         # No paths found
         if path is None:
@@ -209,23 +222,91 @@ class PathTraceView(generic.ObjectView):
         # Get the total length of the cable and whether the length is definitive (fully defined)
         total_length, is_definitive = path.get_total_length() if path else (None, False)
 
-        # Determine the path to the SVG trace image. The `-trace` API action (and the SVG renderer,
-        # which calls origin.trace()) exist only for PathEndpoint origins. Other valid origins such as
-        # CircuitTermination have no such action, so omit the SVG for them.
+        # Endpoint APIs retain bridged-interface tracing. An on-demand trace
+        # must use the selected path, which may not be saved on its origin.
         origin_model = path.origin_type.model_class()
-        if issubclass(origin_model, PathEndpoint):
+        trace_origin = path.origins[0]
+        use_endpoint_trace = (
+            path.pk is not None
+            and issubclass(origin_model, PathEndpoint)
+            and trace_origin.path == path
+        )
+        if use_endpoint_trace:
             api_viewname = f"{path.origin_type.app_label}-api:{path.origin_type.model}-trace"
-            svg_url = f"{reverse(api_viewname, kwargs={'pk': path.origins[0].pk})}?render=svg"
+            svg_url = f"{reverse(api_viewname, kwargs={'pk': trace_origin.pk})}?render=svg"
+            segments = trace_origin.trace()
         else:
-            svg_url = None
+            # This SVG response also supports transient paths and passive origins.
+            query = request.GET.copy()
+            query['render'] = 'svg'
+            svg_url = f'{request.path}?{query.urlencode()}'
+            segments = path.trace()
+
+        # A segment may end where the next one begins. Keep each termination
+        # once, while retaining every cable in the order it is traversed.
+        trace_objects = []
+        for near_ends, links, far_ends in segments:
+            for node in (*near_ends, *links, *far_ends):
+                if not trace_objects or node != trace_objects[-1]:
+                    trace_objects.append(node)
+
+        custom_field_names = settings.PLUGINS_CONFIG.get('custom_field_names', {})
+        cable_type_field = custom_field_names.get('cable_type', 'cable_type_stm')
+        position_name_field = custom_field_names.get('position_name', 'position_name')
+        trace_rows = []
+        for node in trace_objects:
+            if isinstance(node, Cable):
+                type_value = node.cf.get(cable_type_field, '')
+                length = f'{node.length} {node.length_unit}' if node.length is not None else ''
+                nom_position = ''
+            else:
+                type_value = node.get_type_display() if hasattr(node, 'get_type_display') else ''
+                length = ''
+                nom_position = getattr(node, 'cf', {}).get(position_name_field, '')
+
+            trace_rows.append({
+                'object': node,
+                'type': type_value,
+                'length': length,
+                'nom_position': nom_position,
+            })
+
+        for related_path in related_paths:
+            related_path.trace_destinations = related_path.destinations or [
+                node for node in related_path.path_objects[-1] if isinstance(node, (FrontPort, RearPort))
+            ]
 
         return {
             'path': path,
+            'asymmetric_nodes': path.get_asymmetric_nodes() if path.is_split else [],
+            'segment_count': sum(bool(links) for _, links, _ in path.trace()),
             'related_paths': related_paths,
             'total_length': total_length,
             'is_definitive': is_definitive,
             'svg_url': svg_url,
+            'trace_table': tables.CableTraceTable(trace_rows),
         }
+
+    def get(self, request, **kwargs):
+        if request.GET.get('export') is not None:
+            instance = self.get_object(**kwargs)
+            context = self.get_extra_context(request, instance)
+            table = context.get('trace_table', tables.CableTraceTable([]))
+            return TableExport(TableExport.XLSX, table).response(filename='netbox_trace.xlsx')
+        if request.GET.get('render') != 'svg':
+            return super().get(request, **kwargs)
+        instance = self.get_object(**kwargs)
+        path = self.get_extra_context(request, instance)['path']
+        if path is None:
+            raise Http404
+        try:
+            width = int(request.GET.get('width', CABLE_TRACE_SVG_DEFAULT_WIDTH))
+        except (TypeError, ValueError):
+            width = CABLE_TRACE_SVG_DEFAULT_WIDTH
+        # Use the selected path, including paths without a PathEndpoint origin.
+        origin = path.origins[0]
+        drawing = CableTraceSVG(origin, width=width, base_url=request.build_absolute_uri('/'), path=path)
+        return HttpResponse(drawing.render().tostring(), content_type='image/svg+xml')
 
 
 #
@@ -4356,6 +4437,7 @@ class CableListView(generic.ObjectListView):
 
 @register_model_view(Cable)
 class CableView(generic.ObjectView):
+    actions = (TraceCable, CloneObject, EditObject, DeleteObject)
     queryset = Cable.objects.all()
     template_name = 'generic/object.html'
     layout = layout.SimpleLayout(
@@ -4377,6 +4459,8 @@ class CableView(generic.ObjectView):
         ],
     )
 
+
+register_model_view(Cable, 'trace', kwargs={'model': Cable})(PathTraceView)
 
 @register_model_view(Cable, 'add', detail=False)
 @register_model_view(Cable, 'edit')

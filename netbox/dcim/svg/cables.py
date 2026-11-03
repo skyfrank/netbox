@@ -129,9 +129,11 @@ class CableTraceSVG:
     :param origin: The originating termination
     :param width: Width of the generated image (in pixels)
     :param base_url: Base URL for links within the SVG document. If none, links will be relative.
+    :param path: Optional precomputed CablePath, including an unsaved passive path.
     """
-    def __init__(self, origin, width=CABLE_TRACE_SVG_DEFAULT_WIDTH, base_url=None):
+    def __init__(self, origin, width=CABLE_TRACE_SVG_DEFAULT_WIDTH, base_url=None, path=None):
         self.origin = origin
+        self.path = path
         self.width = width
         self.base_url = base_url.rstrip('/') if base_url is not None else ''
 
@@ -340,7 +342,7 @@ class CableTraceSVG:
         from dcim.models import Cable
         from wireless.models import WirelessLink
 
-        traced_path = self.origin.trace()
+        traced_path = self.path.trace() if self.path is not None else self.origin.trace()
 
         parent_object_nodes = []
         # Iterate through each (terms, cable, terms) segment in the path
@@ -350,10 +352,13 @@ class CableTraceSVG:
             # This is segment number one.
             if i == 0:
                 # If this is the first segment, draw the originating termination's parent object
-                parent_object_nodes = self.draw_parent_objects(set(end.parent_object for end in near_ends))
+                parent_object_nodes = self.draw_parent_objects({
+                    getattr(end, 'parent_object', end) for end in near_ends
+                })
             # Else: No need to draw parent objects (parent objects are drawn in last "round" as the far-end!)
 
-            near_terminations = self.draw_terminations(near_ends, parent_object_nodes)
+            near_ports = [end for end in near_ends if hasattr(end, 'parent_object')]
+            near_terminations = self.draw_terminations(near_ports, parent_object_nodes) if near_ports else []
 
             # Connector (a Cable or WirelessLink)
             if links and far_ends:
@@ -448,7 +453,14 @@ class CableTraceSVG:
                 self.cursor += CABLE_HEIGHT
 
                 # Object
-                parent_object_nodes = self.draw_parent_objects(far_ends)
+                if all(hasattr(end, 'parent_object') for end in far_ends):
+                    # The mapping-side walk can reverse a circuit attachment:
+                    # draw its termination as well as its parent circuit.
+                    parent_object_nodes, _ = self.draw_far_objects(
+                        {end.parent_object for end in far_ends}, far_ends
+                    )
+                else:
+                    parent_object_nodes = self.draw_parent_objects(far_ends)
 
         # Determine drawing size
         self.drawing = svgwrite.Drawing(
