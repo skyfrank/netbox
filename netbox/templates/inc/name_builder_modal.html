@@ -85,8 +85,30 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const siteSelect = document.getElementById('{{ form.nb_site.id_for_label }}');
+(function() {
+    // Capture a reference to any ancestor Bootstrap modal that is already open *now*, before
+    // any later script in the page (e.g. gestion_cables' "quick add" dialog template) might
+    // reparent this modal elsewhere in the DOM -- which severs this DOM relationship. This
+    // happens when the name builder is opened from within another modal (e.g. a "quick add"
+    // dialog); Bootstrap doesn't support genuinely nested/stacked modals (hiding this modal
+    // would otherwise corrupt the outer modal's own open/backdrop state), so below we treat
+    // them as sequential instead: hide the outer modal while this one is shown, and restore
+    // it once this one closes.
+    const nameBuilderModalElement = document.getElementById('custom-name-creation-modal');
+    const ancestorModalElement = nameBuilderModalElement
+        ? nameBuilderModalElement.closest('.modal.show')
+        : null;
+
+    let initialized = false;
+
+    function initNameBuilderModal() {
+        if (initialized) return;
+        const siteSelect = document.getElementById('{{ form.nb_site.id_for_label }}');
+        // Bail out if this invocation ran too early and TomSelect hasn't been applied to our
+        // own selects yet; a later trigger (see below) will retry once it has.
+        if (!siteSelect || !siteSelect.tomselect) return;
+        initialized = true;
+
     const locationSelect = document.getElementById('{{ form.nb_location.id_for_label }}');
     const systemSelect = document.getElementById('{{ form.nb_system.id_for_label }}');
     const subsystemSelect = document.getElementById('{{ form.nb_subsystem.id_for_label }}');
@@ -104,10 +126,98 @@ document.addEventListener('DOMContentLoaded', function() {
     const targetNameInput = document.getElementById('{{ target_field.id_for_label }}');
     const targetSiteSelect = document.getElementById('{{ target_site.id_for_label }}');
     const targetLocationSelect = document.getElementById('{{ target_location.id_for_label }}');
+    // Optional: a (possibly multi-valued) device select whose first selected device's site and
+    // location should be used as the preferred default for this modal's own site/location
+    // selects, when there's no target_site/target_location (or existing name) to derive them
+    // from instead -- e.g. the Cable form's "Side A" device selector.
+    const targetDeviceSelect = document.getElementById('{{ target_device.id_for_label }}');
     const modal = document.getElementById('custom-name-creation-modal');
+
+    if (ancestorModalElement) {
+        const ancestorModalInstance = Modal.getOrCreateInstance(ancestorModalElement);
+        modal.addEventListener('show.bs.modal', () => ancestorModalInstance.hide());
+        modal.addEventListener('hidden.bs.modal', () => ancestorModalInstance.show());
+    }
+    // Re-attempt any still-pending preferred/forced defaults (see maybeApplyPreferredValue()
+    // below) every time the modal is actually shown -- their backing selects' options may
+    // still have been loading in the background at the time the page first rendered (e.g. on
+    // a slow connection), so a fresh attempt right as the user opens the modal, by which point
+    // the async loads have very likely completed, makes sure the defaults aren't missed.
+    modal.addEventListener('show.bs.modal', () => updateAllSelects());
+
     // Tracks, per select, the last name we already issued a targeted server-side search for
     // -- so updateSelect() falls back to a search at most once per name instead of looping.
     const attemptedSearches = new WeakMap();
+    // Same idea, but for preferred/forced-value searches (see autoSelectPreferredValue()) --
+    // kept separate from attemptedSearches above since they're unrelated lookups that happen
+    // to sometimes target the same name, and keyed by *both* the name and the segment's
+    // prerequisite value (e.g. the currently selected site, for a location default) so that a
+    // new one-shot attempt is allowed again whenever that prerequisite changes (e.g. the user
+    // picks a different site) instead of staying permanently stuck on an earlier site's result.
+    const attemptedPreferredSearches = new WeakMap();
+
+    // Generic "preferred default value" support: the including template may pass a `prefer`
+    // variable -- a JSON object mapping any segment name(s) ('site', 'location', 'system',
+    // 'subsystem', 'component') to a display value that should be auto-selected the first
+    // time that segment becomes eligible to fill in (see maybeApplyPreferredValue() below),
+    // purely as a convenience default to help guide users -- never forcibly reapplied
+    // afterwards, so users remain free to pick a different option or clear it entirely.
+    const preferredValues = JSON.parse('{{ prefer|default:"{}"|escapejs }}');
+    // Generic "forced value" support: same segment-name mapping, but via a `force` variable --
+    // unlike `prefer`, this is reapplied every time the segment is blank, i.e. it behaves as a
+    // locked default (e.g. the VirtualMachine form always forcing location to 'LT9999').
+    const forcedValues = JSON.parse('{{ force|default:"{}"|escapejs }}');
+    const segmentNames = ['site', 'location', 'system', 'subsystem', 'component'];
+    const segmentSelects = [siteSelect, locationSelect, systemSelect, subsystemSelect, componentSelect];
+    // Segments that depend on another segment already having a value before a preferred/forced
+    // default makes sense to offer (e.g. location depends on site being chosen first).
+    const prerequisitePart = { 1: 0, 3: 2, 4: 3 };
+    // Tracks, per segment index, whether we've already made our one allowed attempt to apply
+    // its preferred default (regardless of whether a matching option was actually found).
+    const preferredApplied = new Set();
+
+    function prerequisiteSatisfied(part) {
+        const prerequisite = prerequisitePart[part];
+        return prerequisite === undefined || !!segmentSelects[prerequisite].tomselect.getValue();
+    }
+
+    // The prerequisite segment's current value (or '' if this segment has none), used as part
+    // of attemptedPreferredSearches' dedupe key -- see its declaration above.
+    function prerequisiteValueKey(part) {
+        const prerequisite = prerequisitePart[part];
+        return prerequisite === undefined ? '' : segmentSelects[prerequisite].tomselect.getValue();
+    }
+
+    function maybeApplyPreferredValue(tomselect, part) {
+        // Forced values take priority and are reapplied every time, unlike one-shot `prefer`.
+        if (forcedValues[segmentNames[part]] !== undefined) {
+            if (!prerequisiteSatisfied(part)) return false;
+            const applied = autoSelectPreferredValue(tomselect, forcedValues[segmentNames[part]], prerequisiteValueKey(part));
+            // Forced defaults should immediately propagate back into fullNameInput even when
+            // TomSelect's programmatic setValue() doesn't emit the native change event.
+            if (applied) {
+                syncFullNameFromSelects();
+            }
+            return applied;
+        }
+        if (preferredApplied.has(part)) return false;
+        if (!prerequisiteSatisfied(part)) {
+            // Prerequisite isn't satisfied yet -- don't consume our one-shot attempt; try
+            // again later once it is (e.g. after the site gets chosen).
+            return false;
+        }
+        const preferredValue = preferredValues[segmentNames[part]];
+        const applied = autoSelectPreferredValue(tomselect, preferredValue, prerequisiteValueKey(part));
+        // Only consider the one-shot attempt "used up" once it either succeeded or there was
+        // nothing to apply in the first place -- if a value IS configured but its option simply
+        // isn't loaded into this select yet (e.g. this ran before its data finished loading),
+        // leave the attempt available so a later retry (e.g. once the real 'load' event fires)
+        // can still succeed instead of silently giving up forever.
+        if (applied || !preferredValue) {
+            preferredApplied.add(part);
+        }
+        return applied;
+    }
 
     siteSelect.addEventListener('change', () => updateName(0));
     siteSelect.tomselect.on('load', () => updateSelect(siteSelect, 0));
@@ -191,6 +301,17 @@ document.addEventListener('DOMContentLoaded', function() {
         fullNameInput.value = targetNameInput.value;
         updateAllSelects();
     });
+    // Generic helper: populate the external target_field (e.g. form.label / form.name) with a
+    // site/location-derived name, but only while it's still blank -- so it never clobbers a
+    // name the user (or a previous prefill) already set. Reuses the 'input' listener registered
+    // above (rather than duplicating its fullNameInput/updateAllSelects() logic) so any current
+    // or future source of a derived site/location goes through the same single code path.
+    function prefillTargetField(site, location) {
+        if (targetNameInput.value) return;
+        if (!site && !location) return;
+        targetNameInput.value = `${site ?? ''}-${location ?? ''}`;
+        targetNameInput.dispatchEvent(new Event('input'));
+    }
     targetSiteSelect?.addEventListener('change', () => {
         if (siteSelect.tomselect.getValue() !== targetSiteSelect.tomselect.getValue()) {
             const option = targetSiteSelect.tomselect.options[targetSiteSelect.tomselect.getValue()];
@@ -220,23 +341,41 @@ document.addEventListener('DOMContentLoaded', function() {
     // If the target site/location selects are already populated (e.g. from URL query
     // params) but the target name field is still blank, seed its site/location segments
     // so the modal's own selects prefill to match instead of opening empty.
-    if (!targetNameInput.value) {
-        const siteValue = targetSiteSelect?.tomselect.getValue();
-        const locationValue = targetLocationSelect?.tomselect.getValue();
-        const prefillSite = siteValue ? targetSiteSelect.tomselect.options[siteValue]?.display : '';
-        const prefillLocation = locationValue ? targetLocationSelect.tomselect.options[locationValue]?.display : '';
-        if (prefillSite || prefillLocation) {
-            targetNameInput.value = `${prefillSite ?? ''}-${prefillLocation ?? ''}`;
-        }
-    }
+    const siteValue = targetSiteSelect?.tomselect.getValue();
+    const locationValue = targetLocationSelect?.tomselect.getValue();
+    const prefillSite = siteValue ? targetSiteSelect.tomselect.options[siteValue]?.display : '';
+    const prefillLocation = locationValue ? targetLocationSelect.tomselect.options[locationValue]?.display : '';
+    prefillTargetField(prefillSite, prefillLocation);
     fullNameInput.value = targetNameInput.value;
     instanceNameInput.value = fullNameInput.value.split('-').length > 5 ? fullNameInput.value.split('-').slice(5).join('-') : '';
 
-    let shouldUpdateName = true;
-    function updateName() {
-        if (!shouldUpdateName || document.activeElement === fullNameInput) return;
+    // If there's a target_device select (e.g. the Cable form's "Side A" device), derive the
+    // site/location to prefill from directly from that device's own name instead of making an
+    // API lookup: our naming convention is tightly structured as "<site>-<location>-...", so
+    // the device name's first two dash-separated segments already give us the site/location
+    // names to resolve (e.g. "1X61-LT0204-TR-..." -> site "1X61", location "LT0204").
+    function applyDeviceSiteLocation(deviceId) {
+        if (!deviceId) return;
+        const deviceOption = targetDeviceSelect.tomselect.options[deviceId];
+        const deviceName = deviceOption?.display;
+        if (!deviceName) return;
+        const [deviceSite, deviceLocation] = deviceName.split('-');
+        prefillTargetField(deviceSite, deviceLocation);
+    }
+    if (targetDeviceSelect?.tomselect) {
+        // Device select may hold multiple values (e.g. virtual chassis members); prefer
+        // the first one.
+        const [firstDeviceId] = targetDeviceSelect.tomselect.getValue();
+        applyDeviceSiteLocation(firstDeviceId);
+        // Keep preferring the device's site/location as it changes, but only while the target
+        // field is still blank (prefillTargetField() itself is a no-op once it isn't).
+        targetDeviceSelect.tomselect.on('item_add', (deviceId) => {
+            applyDeviceSiteLocation(deviceId);
+        });
+    }
 
-        shouldUpdateName = false;
+    let shouldUpdateName = true;
+    function syncFullNameFromSelects() {
         const currentParts = fullNameInput.value.split('-') ?? [];
 
         const siteName = siteSelect.tomselect.options[siteSelect.tomselect.getValue()]?.display ?? currentParts[0] ?? '';
@@ -252,7 +391,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // names that don't match those lengths (e.g. a longer site name) would get
         // reconstructed into the wrong segments and corrupt the name.
         fullNameInput.value = `${siteName}-${locationName}-${systemName}-${subsystemName}-${componentName}-${instanceName}`;
+    }
 
+    function updateName() {
+        if (!shouldUpdateName || document.activeElement === fullNameInput) return;
+
+        shouldUpdateName = false;
+        syncFullNameFromSelects();
         updateAllSelects();
         shouldUpdateName = true;
     }
@@ -281,11 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const descriptionSpan = elem.parentElement.parentElement.getElementsByClassName("form-text")[0];
         const name = fullNameInput.value.split('-')[part];
         if (!name) {
-            if (part === 1 && siteSelect.tomselect.getValue() && autoSelectPreferredValue(tomselect, "{{ prefer_location }}")) {
-                return;
-            } else if (part === 2 && autoSelectPreferredValue(tomselect, "{{ prefer_system }}")) {
-                return;
-            } else if (part === 3 && systemSelect.tomselect.getValue() && autoSelectPreferredValue(tomselect, "{{ prefer_subsystem }}")) {
+            if (maybeApplyPreferredValue(tomselect, part)) {
                 return;
             }
             tomselect.clear();
@@ -319,14 +460,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function autoSelectPreferredValue(tomselect, preferredName) {
+    function autoSelectPreferredValue(tomselect, preferredName, prerequisiteValue = '') {
         if (!preferredName || document.activeElement === fullNameInput) return false;
         const option = Object.values(tomselect.options).find((o) => o.display === preferredName);
         if (option) {
             if (tomselect.getValue() != option.id) {
                 tomselect.setValue(option.id);
             }
+            attemptedPreferredSearches.delete(tomselect);
             return true;
+        }
+        // The preferred/forced option may not be among the currently loaded options -- an
+        // unfiltered '' load only fetches the API's default (first) page, so e.g. a location
+        // far down an alphabetical list of many locations for the current site would never
+        // show up otherwise. Issue the same kind of targeted server-side search updateSelect()
+        // uses for real name segments; the 'load' listener already registered for this select
+        // will re-run maybeApplyPreferredValue() (via updateSelect()) once results arrive.
+        const searchKey = `${prerequisiteValue}::${preferredName}`;
+        if (attemptedPreferredSearches.get(tomselect) !== searchKey) {
+            attemptedPreferredSearches.set(tomselect, searchKey);
+            // Defer the actual request by a tick: this is commonly invoked synchronously from
+            // this select's own 'clear' event, which itself typically fires midway through a
+            // parent dependency's cascade handler (e.g. a `site` change cascading to reset and
+            // reload `location`, per dynamicTomSelect.ts's handleEvent()) -- that handler issues
+            // its own, unrelated load() call immediately afterwards in the same synchronous
+            // pass, which would otherwise instantly supersede (and discard the response of) our
+            // targeted search here. Deferring guarantees ours is issued after that happens, so
+            // it becomes the winning (most recent) request instead of a wasted, discarded one.
+            setTimeout(() => tomselect.load(preferredName), 0);
         }
         return false;
     }
@@ -355,5 +516,25 @@ document.addEventListener('DOMContentLoaded', function() {
         targetNameInput.value = fullNameInput.value;
         Modal.getInstance(modal).hide();
     });
-});
+    }
+
+    // On an initial full-page load, DOMContentLoaded reliably fires once core's init scripts
+    // (including TomSelect initialization for these selects, see project-static/src/netbox.ts)
+    // have already run.
+    document.addEventListener('DOMContentLoaded', initNameBuilderModal);
+
+    // When this modal is instead loaded asynchronously via htmx (e.g. the "quick add" dialog),
+    // DOMContentLoaded has already fired for the page and will never fire again for this
+    // fragment -- so the listener above never runs. Wait for htmx's 'afterSettle' event
+    // instead, which is when core reinitializes TomSelect on any newly swapped-in <select>
+    // elements (see project-static/src/htmx.ts). The initialized guard above makes this a
+    // no-op if DOMContentLoaded already handled it, and vice versa.
+    document.addEventListener('htmx:afterSettle', initNameBuilderModal, { once: true });
+
+    // Edge case: this script executes after DOMContentLoaded already fired (htmx swap) but
+    // TomSelect happens to already be initialized on our selects (e.g. the enclosing dialog's
+    // own settle already completed by the time this ran). Don't wait for another event in
+    // that case.
+    initNameBuilderModal();
+})();
 </script>
