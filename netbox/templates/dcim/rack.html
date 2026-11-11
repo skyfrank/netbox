@@ -4,7 +4,7 @@
 {% load static %}
 {% load plugins %}
 {% load i18n %}
-{% load mptt %}
+
 {% load form_helpers %}
 
 {% block content %}
@@ -15,7 +15,16 @@
         <table class="table table-hover attr-table">
           <tr>
             <th scope="row">{% trans "Region" %}</th>
-            <td>{% nested_tree object.site.region %}</td>
+            <td>
+              {% if object.site.region %}
+                {% for region in object.site.region.get_ancestors %}
+                  {{ region|linkify }} /
+                {% endfor %}
+                {{ object.site.region|linkify }}
+              {% else %}
+                {{ ''|placeholder }}
+              {% endif %}
+            </td>
           </tr>
           <tr>
             <th scope="row">{% trans "Site" %}</th>
@@ -23,7 +32,16 @@
           </tr>
           <tr>
             <th scope="row">{% trans "Location" %}</th>
-            <td>{% nested_tree object.location %}</td>
+            <td>
+              {% if object.location %}
+                {% for location in object.location.get_ancestors %}
+                  {{ location|linkify }} /
+                {% endfor %}
+                {{ object.location|linkify }}
+              {% else %}
+                {{ ''|placeholder }}
+              {% endif %}
+            </td>
           </tr>
           <tr>
             <th scope="row">{% trans "Facility ID" %}</th>
