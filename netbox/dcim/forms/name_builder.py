@@ -37,6 +37,7 @@ class NameBuilderForm(forms.Form):
                 'ordering': 'systeme'
                 },
             required=False,
+            context={'parent': '_context'}
         )
         self.fields["nb_subsystem"] = DynamicModelChoiceField(
             queryset=subsystem.objects.all(),
@@ -47,6 +48,7 @@ class NameBuilderForm(forms.Form):
                 'ordering': 'sous_systeme'
                 },
             required=False,
+            context={'parent': '_context'}
         )
         self.fields["nb_component"] = DynamicModelChoiceField(
             queryset=component.objects.all(),
@@ -58,6 +60,7 @@ class NameBuilderForm(forms.Form):
                 'ordering': 'composant',
             },
             required=False,
+            context={'parent': '_context'}
         )
 
         # Disable browser autocomplete
